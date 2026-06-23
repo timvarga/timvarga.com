@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hello, world — Tim Varga</title>
+<meta name="description" content="First post on Tim Varga's blog.">
+<link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <nav class="nav-bar">
+    <a class="nav-brand" href="/index.html">timvarga</a>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <ul class="nav-links">
+      <li><a href="/index.html">Home</a></li>
+      <li><a href="/about.html">About</a></li>
+      <li><a href="/projects.html">Projects</a></li>
+      <li><a href="/blog/index.html">Blog</a></li>
+      <li><a href="/social.html">Social</a></li>
+      <li><a href="/contact.html">Contact</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main>
+  <div class="container">
+    <article class="post">
+      <header>
+        <h1>Hello, world</h1>
+        <time datetime="2026-06-23">June 23, 2026</time>
+      </header>
+
+      <p>
+        <!-- TODO: Replace with your actual first post. This is just a
+             placeholder showing the structure (header, dated, simple
+             prose body) for future posts. -->
+        This is the first post on this site. No CMS, no build step — just a
+        plain HTML file with a date and some text. To write a new post,
+        copy this file, change the title and date in both the
+        <code>&lt;title&gt;</code> tag and the <code>&lt;time&gt;</code>
+        element, and replace this paragraph with your content.
+      </p>
+      <p>
+        Keep it simple: headings (<code>&lt;h2&gt;</code>), paragraphs,
+        and links all use the same shared stylesheet as the rest of the
+        site, so anything you write here will look consistent.
+      </p>
+
+      <p><a href="/blog/index.html">&larr; Back to all posts</a></p>
+    </article>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    &copy; <span id="year">2026</span> Tim Varga. Built with HTML, CSS &amp; vanilla JS.
+  </div>
+</footer>
+
+<script src="/assets/js/main.js"></script>
+<script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+</body>
+</html>

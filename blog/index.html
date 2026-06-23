@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blog — Tim Varga</title>
+<meta name="description" content="Blog posts by Tim Varga.">
+<link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <nav class="nav-bar">
+    <a class="nav-brand" href="/index.html">timvarga</a>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <ul class="nav-links">
+      <li><a href="/index.html">Home</a></li>
+      <li><a href="/about.html">About</a></li>
+      <li><a href="/projects.html">Projects</a></li>
+      <li><a href="/blog/index.html">Blog</a></li>
+      <li><a href="/social.html">Social</a></li>
+      <li><a href="/contact.html">Contact</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main>
+  <div class="container">
+    <h1>Blog</h1>
+    <p>Notes, write-ups, and whatever else.</p>
+
+    <div class="todo-note">
+      TODO (Tim): To add a new post — copy <code>blog/hello-world.html</code>,
+      rename it, edit the title/date/content, then add a matching
+      <code>&lt;li&gt;</code> entry here at the top of the list. No build
+      step needed, it's plain HTML.
+    </div>
+
+    <ul class="post-list">
+      <li>
+        <time datetime="2026-06-23">June 23, 2026</time>
+        <a href="/blog/hello-world.html">Hello, world — starting this blog</a>
+      </li>
+    </ul>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    &copy; <span id="year">2026</span> Tim Varga. Built with HTML, CSS &amp; vanilla JS.
+  </div>
+</footer>
+
+<script src="/assets/js/main.js"></script>
+<script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+</body>
+</html>
