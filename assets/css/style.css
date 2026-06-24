@@ -327,6 +327,221 @@ article.post header time {
   color: var(--color-text-muted);
 }
 
+/* ---------- D3 Career Timeline ---------- */
+
+.timeline-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.1rem;
+  margin-bottom: 1.5rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.d3-timeline {
+  position: relative;
+  padding-left: 30px;
+  margin-top: 0.5rem;
+}
+
+/* The vertical spine */
+.d3-timeline::before {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 6px;
+  bottom: 12px;
+  width: 2px;
+  background: var(--color-border);
+}
+
+/* Year markers */
+.tl-year-marker {
+  position: relative;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  padding: 0.75rem 0 0.35rem;
+  user-select: none;
+}
+
+.tl-year-marker::before {
+  content: '';
+  position: absolute;
+  left: -30px;
+  top: calc(50% + 4px);
+  width: 18px;
+  height: 2px;
+  background: var(--color-border);
+}
+
+/* Job node row */
+.tl-node {
+  position: relative;
+  margin-bottom: 0.6rem;
+  cursor: pointer;
+  outline: none;
+}
+
+/* The dot on the spine */
+.tl-dot {
+  position: absolute;
+  left: -26px;
+  top: 16px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid;
+  background: #fff;
+  z-index: 1;
+  transition: transform 0.18s ease, background-color 0.18s ease;
+}
+
+.tl-node:hover .tl-dot,
+.tl-node:focus-visible .tl-dot {
+  transform: scale(1.35);
+}
+
+.tl-node.is-active .tl-dot {
+  transform: scale(1.35);
+  background-color: currentColor; /* filled via JS inline color */
+}
+
+/* Card */
+.tl-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg-alt);
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.tl-node:hover .tl-card,
+.tl-node:focus-visible .tl-card {
+  border-color: #c5c5c8;
+}
+
+.tl-node.is-active .tl-card {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.08);
+}
+
+/* Card header (always visible) */
+.tl-card-header {
+  padding: 0.8rem 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.6rem;
+}
+
+.tl-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+  margin: 0;
+  flex: 0 0 100%;
+}
+
+.tl-org {
+  font-size: 0.83rem;
+  color: var(--color-text-muted);
+  flex: 1;
+}
+
+.tl-dates {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  display: block;
+  flex: 0 0 100%;
+}
+
+.tl-concurrent-badge {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  padding: 0.1rem 0.45rem;
+  background: #fffbeb;
+  color: #92400e;
+  border: 1px solid #fde68a;
+  border-radius: 999px;
+}
+
+.tl-toggle-icon {
+  margin-left: auto;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  transition: transform 0.2s ease;
+  align-self: center;
+}
+
+.tl-node.is-active .tl-toggle-icon {
+  transform: rotate(180deg);
+}
+
+/* Expandable detail */
+.tl-detail {
+  max-height: 0;
+  overflow: hidden;
+  border-top: 0px solid var(--color-border);
+  transition: max-height 0.32s ease, border-top-width 0.1s ease;
+}
+
+.tl-node.is-active .tl-detail {
+  max-height: 600px;
+  border-top-width: 1px;
+}
+
+.tl-detail-inner {
+  padding: 0.9rem 1rem 1rem;
+}
+
+.tl-location {
+  font-size: 0.83rem;
+  color: var(--color-text-muted);
+  margin-bottom: 0.6rem;
+}
+
+.tl-desc {
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--color-text);
+  margin: 0 0 0.75rem;
+}
+
+/* Map placeholder box */
+.tl-map-placeholder {
+  height: 160px;
+  border-radius: 6px;
+  border: 1.5px dashed var(--color-accent);
+  background: #f0f4ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-accent);
+  margin-top: 0.5rem;
+}
+
+.tl-map-label {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
 /* ---------- Social Media ---------- */
 
 .social-grid {
