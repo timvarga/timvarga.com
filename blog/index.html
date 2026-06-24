@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Blog — Tim Varga</title>
-<meta name="description" content="Blog posts by Tim Varga.">
+<meta name="description" content="Blog posts and Bluesky feed by Tim Varga.">
 <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -34,19 +34,34 @@
     <h1>Blog</h1>
     <p>Notes, write-ups, and whatever else.</p>
 
-    <div class="todo-note">
-      TODO (Tim): To add a new post — copy <code>blog/hello-world.html</code>,
-      rename it, edit the title/date/content, then add a matching
-      <code>&lt;li&gt;</code> entry here at the top of the list. No build
-      step needed, it's plain HTML.
-    </div>
-
     <ul class="post-list">
       <li>
         <time datetime="2026-06-23">June 23, 2026</time>
         <a href="/blog/hello-world.html">Hello, world — starting this blog</a>
       </li>
     </ul>
+
+    <h2>From Bluesky</h2>
+    <p>
+      Live feed from
+      <a href="https://bsky.app/profile/tvargs.bsky.social" target="_blank" rel="noopener">@tvargs.bsky.social</a>.
+    </p>
+
+    <div class="bsky-tabs" role="tablist">
+      <button class="bsky-tab is-active" role="tab" data-panel="bsky-panel-posts">Posts &amp; Reposts</button>
+      <button class="bsky-tab" role="tab" data-panel="bsky-panel-likes">Likes</button>
+    </div>
+
+    <div id="bsky-panel-posts" class="bsky-panel is-active" role="tabpanel">
+      <div id="bsky-posts-feed"></div>
+      <button id="bsky-posts-more" class="bsky-load-more">Load more</button>
+    </div>
+
+    <div id="bsky-panel-likes" class="bsky-panel" role="tabpanel">
+      <div id="bsky-likes-feed"></div>
+      <button id="bsky-likes-more" class="bsky-load-more">Load more</button>
+    </div>
+
   </div>
 </main>
 
@@ -57,6 +72,7 @@
 </footer>
 
 <script src="/assets/js/main.js"></script>
+<script src="/assets/js/bluesky-feed.js"></script>
 <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
 </body>
 </html>
