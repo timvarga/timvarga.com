@@ -24,9 +24,12 @@
   }
 
   /* ── TILE LAYER ─────────────────────────────────────────── */
-  var TILE_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+  /* CartoDB Positron — minimal light-gray line-art style, no API key needed */
+  var TILE_URL = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
   var TILE_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright" '
-                + 'target="_blank" rel="noopener">OpenStreetMap</a>';
+                + 'target="_blank" rel="noopener">OpenStreetMap</a> contributors '
+                + '&copy; <a href="https://carto.com/attributions" '
+                + 'target="_blank" rel="noopener">CARTO</a>';
 
   /* ── ICON HELPERS ───────────────────────────────────────── */
 
