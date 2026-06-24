@@ -104,36 +104,65 @@
       if (orgEl) orgName = orgEl.textContent;
     }
 
+    /* Place markers first so the map isn't empty while routing loads */
     if (sameLocation) {
-      /* Freelance / home-office role: single marker */
       L.marker([homeLat, homeLng], { icon: homeIcon })
         .addTo(map)
         .bindPopup("Home base — Oakland, CA");
       map.setView([homeLat, homeLng], 12);
-    } else {
-      /* Commute route: home + office markers + dashed polyline */
-      L.marker([homeLat, homeLng], { icon: homeIcon })
-        .addTo(map)
-        .bindPopup("Home — Oakland, CA");
-
-      L.marker([officeLat, officeLng], { icon: officeIcon })
-        .addTo(map)
-        .bindPopup(orgName || "Office");
-
-      L.polyline(
-        [[homeLat, homeLng], [officeLat, officeLng]],
-        { color: "#2563eb", weight: 2, opacity: 0.75, dashArray: "6 5" }
-      ).addTo(map);
-
-      /* Fit both markers with padding */
-      var bounds = L.latLngBounds(
-        [homeLat, homeLng],
-        [officeLat, officeLng]
-      );
-      map.fitBounds(bounds, { padding: [24, 24], maxZoom: 13 });
+      initialized[id] = map;
+      return;
     }
 
+    L.marker([homeLat, homeLng], { icon: homeIcon })
+      .addTo(map)
+      .bindPopup("Home — Oakland, CA");
+
+    L.marker([officeLat, officeLng], { icon: officeIcon })
+      .addTo(map)
+      .bindPopup(orgName || "Office");
+
+    /* Set an initial view while the route loads */
+    var bounds = L.latLngBounds([homeLat, homeLng], [officeLat, officeLng]);
+    map.fitBounds(bounds, { padding: [24, 24], maxZoom: 13 });
+
     initialized[id] = map;
+
+    /* ── OSRM driving route ───────────────────────────────── */
+    /* Coordinates are lng,lat for OSRM (GeoJSON order)        */
+    var osrmUrl = "https://router.project-osrm.org/route/v1/driving/"
+      + homeLng + "," + homeLat + ";"
+      + officeLng + "," + officeLat
+      + "?overview=full&geometries=geojson";
+
+    fetch(osrmUrl)
+      .then(function (r) {
+        if (!r.ok) throw new Error("OSRM HTTP " + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        if (!data.routes || !data.routes[0]) throw new Error("No route returned");
+        var geojson = data.routes[0].geometry;   // GeoJSON LineString
+
+        L.geoJSON(geojson, {
+          style: {
+            color:   "#2563eb",
+            weight:  2.5,
+            opacity: 0.8,
+          },
+        }).addTo(map);
+
+        /* Re-fit to the actual route shape */
+        var routeLayer = L.geoJSON(geojson);
+        map.fitBounds(routeLayer.getBounds(), { padding: [24, 24], maxZoom: 13 });
+      })
+      .catch(function () {
+        /* Routing failed — fall back to a straight dashed line */
+        L.polyline(
+          [[homeLat, homeLng], [officeLat, officeLng]],
+          { color: "#2563eb", weight: 2, opacity: 0.6, dashArray: "6 5" }
+        ).addTo(map);
+      });
   }
 
   /* ── OBSERVE .tl-node CLASS CHANGES ─────────────────────── */
