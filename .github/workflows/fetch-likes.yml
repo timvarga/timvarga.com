@@ -1,0 +1,89 @@
+name: Fetch Bluesky Likes
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'   # every 6 hours
+  workflow_dispatch:          # also runnable manually from the Actions tab
+
+jobs:
+  fetch-likes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write         # needed to commit likes.json back to the repo
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch likes from Bluesky
+        env:
+          BSKY_IDENTIFIER:    ${{ secrets.BSKY_IDENTIFIER }}
+          BSKY_APP_PASSWORD:  ${{ secrets.BSKY_APP_PASSWORD }}
+        run: |
+          python3 - <<'PYEOF'
+          import json, os, urllib.request, urllib.parse, datetime
+
+          API    = "https://bsky.social/xrpc"
+          HANDLE = "tvargs.bsky.social"
+          LIMIT  = 50
+          PAGES  = 4          # fetch up to 200 likes
+
+          identifier = os.environ["BSKY_IDENTIFIER"]
+          password   = os.environ["BSKY_APP_PASSWORD"]
+
+          # ── Authenticate ────────────────────────────────────────
+          auth_payload = json.dumps({
+              "identifier": identifier,
+              "password":   password,
+          }).encode()
+          req = urllib.request.Request(
+              f"{API}/com.atproto.server.createSession",
+              data=auth_payload,
+              headers={"Content-Type": "application/json"},
+              method="POST",
+          )
+          with urllib.request.urlopen(req) as r:
+              session = json.loads(r.read())
+          token = session["accessJwt"]
+          print("Authenticated as", session.get("handle"))
+
+          # ── Fetch likes (paginated) ──────────────────────────────
+          all_likes = []
+          cursor    = None
+
+          for page in range(PAGES):
+              params = {"actor": HANDLE, "limit": LIMIT}
+              if cursor:
+                  params["cursor"] = cursor
+              qs  = urllib.parse.urlencode(params)
+              req = urllib.request.Request(
+                  f"{API}/app.bsky.feed.getActorLikes?{qs}",
+                  headers={"Authorization": f"Bearer {token}"},
+              )
+              with urllib.request.urlopen(req) as r:
+                  data = json.loads(r.read())
+              batch = data.get("feed", [])
+              all_likes.extend(batch)
+              print(f"  Page {page + 1}: {len(batch)} likes (total {len(all_likes)})")
+              cursor = data.get("cursor")
+              if not cursor:
+                  break
+
+          # ── Save ─────────────────────────────────────────────────
+          os.makedirs("assets/data", exist_ok=True)
+          output = {
+              "feed":      all_likes,
+              "updatedAt": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+          }
+          with open("assets/data/likes.json", "w") as f:
+              json.dump(output, f)
+          print(f"Saved {len(all_likes)} likes to assets/data/likes.json")
+          PYEOF
+
+      - name: Commit and push
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add assets/data/likes.json
+          # Only commit if the file actually changed
+          git diff --staged --quiet || git commit -m "chore: refresh Bluesky likes [skip ci]"
+          git push

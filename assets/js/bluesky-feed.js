@@ -1,17 +1,19 @@
 /* ============================================================
    assets/js/bluesky-feed.js
-   Live Bluesky feed for timvarga.com/blog/index.html
+   Bluesky feed for timvarga.com/blog/index.html
 
-   Uses the public AT Protocol API — no auth or API key needed.
-   Renders posts, reposts, and likes in a tabbed feed.
+   Posts & Reposts — fetched live from the public AT Proto API.
+   Likes — read from /assets/data/likes.json, refreshed every
+           6 hours by the GitHub Action at .github/workflows/fetch-likes.yml
    ============================================================ */
 
 (function () {
   "use strict";
 
-  var HANDLE = "tvargs.bsky.social";
-  var API    = "https://public.api.bsky.app/xrpc/";
-  var LIMIT  = 20;
+  var HANDLE     = "tvargs.bsky.social";
+  var API        = "https://public.api.bsky.app/xrpc/";
+  var LIKES_JSON = "/assets/data/likes.json";
+  var LIMIT      = 20;
 
   /* ── UTILITIES ─────────────────────────────────────────── */
 
@@ -64,7 +66,6 @@
       if (cursor < start) {
         html += esc(decoder.decode(bytes.slice(cursor, start))).replace(/\n/g, "<br>");
       }
-
       var chunk = decoder.decode(bytes.slice(start, end));
 
       if (!feature) {
@@ -81,14 +82,12 @@
       } else {
         html += esc(chunk);
       }
-
       cursor = end;
     });
 
     if (cursor < bytes.length) {
       html += esc(decoder.decode(bytes.slice(cursor))).replace(/\n/g, "<br>");
     }
-
     return html;
   }
 
@@ -97,7 +96,6 @@
   function renderEmbed(embed) {
     if (!embed) return "";
 
-    /* Images */
     if (embed["$type"] === "app.bsky.embed.images#view") {
       var imgs = embed.images.map(function (img) {
         return '<a href="' + esc(img.fullsize || img.thumb)
@@ -108,7 +106,6 @@
       return '<div class="bsky-embed-images">' + imgs + "</div>";
     }
 
-    /* External link preview */
     if (embed["$type"] === "app.bsky.embed.external#view") {
       var ext   = embed.external;
       var thumb = ext.thumb
@@ -125,7 +122,6 @@
            + "</div></a>";
     }
 
-    /* Quote post */
     if (embed["$type"] === "app.bsky.embed.record#view") {
       var rec = embed.record;
       if (rec["$type"] === "app.bsky.embed.record#viewRecord" && rec.value) {
@@ -140,7 +136,6 @@
       return "";
     }
 
-    /* Record with media (quote + images) */
     if (embed["$type"] === "app.bsky.embed.recordWithMedia#view") {
       return renderEmbed(embed.media) + renderEmbed(embed.record);
     }
@@ -151,27 +146,23 @@
   /* ── CARD BUILDER ───────────────────────────────────────── */
 
   function buildCard(item, isLike) {
-    var post      = item.post;
-    var isRepost  = item.reason &&
-                    item.reason["$type"] === "app.bsky.feed.defs#reasonRepost";
+    var post     = item.post;
+    var isRepost = item.reason &&
+                   item.reason["$type"] === "app.bsky.feed.defs#reasonRepost";
 
     var header = "";
     if (isRepost) {
       header = '<div class="bsky-repost-header">🔁 Reposted</div>';
     } else if (isLike) {
-      header = '<div class="bsky-repost-header">❤️ Liked by @' + esc(HANDLE) + "</div>";
+      header = '<div class="bsky-repost-header">❤️ Liked</div>';
     }
 
     var displayName = post.author.displayName || post.author.handle;
-
     var avatar = post.author.avatar
       ? '<img class="bsky-avatar" src="' + esc(post.author.avatar) + '" alt="" loading="lazy">'
       : '<div class="bsky-avatar bsky-avatar-placeholder"></div>';
 
-    var textHtml  = renderText(post.record);
-    var embedHtml = renderEmbed(post.embed);
-    var url       = postUrl(post);
-
+    var url     = postUrl(post);
     var likes   = post.likeCount   != null ? "<span>♡ " + post.likeCount   + "</span>" : "";
     var reposts = post.repostCount != null ? "<span>🔁 " + post.repostCount + "</span>" : "";
     var replies = post.replyCount  != null ? "<span>💬 " + post.replyCount  + "</span>" : "";
@@ -181,12 +172,12 @@
       + '<div class="bsky-author">'
       +   avatar
       +   '<div>'
-      +     '<div class="bsky-author-name">'  + esc(displayName)       + "</div>"
+      +     '<div class="bsky-author-name">'    + esc(displayName)        + "</div>"
       +     '<div class="bsky-author-handle">@' + esc(post.author.handle) + "</div>"
       +   "</div>"
       + "</div>"
-      + '<div class="bsky-text">'  + textHtml  + "</div>"
-      + embedHtml
+      + '<div class="bsky-text">'  + renderText(post.record) + "</div>"
+      + renderEmbed(post.embed)
       + '<div class="bsky-meta">'
       +   likes + reposts + replies
       +   '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + formatDate(post.indexedAt) + "</a>"
@@ -194,53 +185,41 @@
       + "</article>";
   }
 
-  /* ── FETCH + RENDER ─────────────────────────────────────── */
+  /* ── POSTS FEED (live API, paginated) ───────────────────── */
 
   function setStatus(container, msg) {
     container.innerHTML = '<p class="bsky-status">' + msg + "</p>";
   }
 
-  function loadFeed(endpoint, extraParams, container, moreBtn, state) {
-    var params = Object.assign({ actor: HANDLE, limit: LIMIT }, extraParams);
+  function loadPosts(container, moreBtn, state) {
+    var params = { actor: HANDLE, limit: LIMIT };
     if (state.cursor) params.cursor = state.cursor;
 
     moreBtn.disabled    = true;
     moreBtn.textContent = "Loading…";
 
-    var qs  = new URLSearchParams(params).toString();
-    var url = API + endpoint + "?" + qs;
-
-    fetch(url)
+    fetch(API + "app.bsky.feed.getAuthorFeed?" + new URLSearchParams(params))
       .then(function (r) {
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.json();
       })
       .then(function (data) {
-        var items  = data.feed || [];
-        var isLike = endpoint === "app.bsky.feed.getActorLikes";
+        var items = (data.feed || []).filter(function (item) {
+          var isRepost = item.reason &&
+            item.reason["$type"] === "app.bsky.feed.defs#reasonRepost";
+          return isRepost || !item.post.record.reply;
+        });
 
         if (items.length === 0 && !state.cursor) {
-          setStatus(container, "Nothing here yet.");
+          setStatus(container, "No posts yet.");
           moreBtn.style.display = "none";
           return;
         }
 
-        /* For author feed: skip standalone replies (keep posts + reposts) */
-        if (!isLike) {
-          items = items.filter(function (item) {
-            var isRepost = item.reason &&
-              item.reason["$type"] === "app.bsky.feed.defs#reasonRepost";
-            return isRepost || !item.post.record.reply;
-          });
-        }
-
-        /* Clear loading message on first batch */
         if (!state.cursor) container.innerHTML = "";
-
-        var html = items.map(function (item) {
-          return buildCard(item, isLike);
-        }).join("");
-        container.insertAdjacentHTML("beforeend", html);
+        container.insertAdjacentHTML("beforeend", items.map(function (i) {
+          return buildCard(i, false);
+        }).join(""));
 
         state.cursor = data.cursor;
         if (data.cursor) {
@@ -251,12 +230,70 @@
         }
       })
       .catch(function (err) {
-        console.error("Bluesky fetch error:", err);
-        if (!state.cursor) {
-          setStatus(container, "Could not load posts — try refreshing the page.");
-        }
+        console.error("Posts fetch error:", err);
+        if (!state.cursor) setStatus(container, "Could not load posts — try refreshing.");
         moreBtn.disabled    = false;
         moreBtn.textContent = "Try again";
+      });
+  }
+
+  /* ── LIKES FEED (static JSON, client-side paging) ────────── */
+
+  function loadLikes(container, moreBtn) {
+    setStatus(container, "Loading…");
+    moreBtn.style.display = "none";
+
+    fetch(LIKES_JSON + "?v=" + Date.now())
+      .then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        var items = data.feed || [];
+
+        if (items.length === 0) {
+          var msg = "No likes yet — the GitHub Action may not have run yet. "
+                  + "Go to the Actions tab on your repo and run <em>Fetch Bluesky Likes</em> manually.";
+          container.innerHTML = '<p class="bsky-status">' + msg + "</p>";
+          return;
+        }
+
+        container.innerHTML = "";
+
+        /* Client-side pagination */
+        var pageSize = LIMIT;
+        var offset   = 0;
+
+        function renderPage() {
+          var page = items.slice(offset, offset + pageSize);
+          container.insertAdjacentHTML("beforeend", page.map(function (i) {
+            return buildCard(i, true);
+          }).join(""));
+          offset += page.length;
+
+          if (offset < items.length) {
+            moreBtn.style.display   = "block";
+            moreBtn.disabled        = false;
+            moreBtn.textContent     = "Load more";
+            moreBtn.onclick         = renderPage;
+          } else {
+            moreBtn.style.display = "none";
+          }
+        }
+
+        renderPage();
+
+        /* Show freshness timestamp */
+        if (data.updatedAt) {
+          container.insertAdjacentHTML("afterbegin",
+            '<p class="bsky-status" style="text-align:left;padding:0 0 0.5rem">'
+            + "Updated " + formatDate(data.updatedAt) + "</p>"
+          );
+        }
+      })
+      .catch(function (err) {
+        console.error("Likes fetch error:", err);
+        setStatus(container, "Could not load likes — try refreshing.");
       });
   }
 
@@ -272,8 +309,7 @@
     var tabs       = document.querySelectorAll(".bsky-tab");
     var panels     = document.querySelectorAll(".bsky-panel");
 
-    var postsCursor = { cursor: null };
-    var likesCursor = { cursor: null };
+    var postsState  = { cursor: null };
     var likesLoaded = false;
 
     /* Tab switching */
@@ -285,26 +321,21 @@
         var panel = document.getElementById(tab.dataset.panel);
         if (panel) panel.classList.add("is-active");
 
-        /* Lazy-load likes on first visit to that tab */
         if (tab.dataset.panel === "bsky-panel-likes" && !likesLoaded) {
           likesLoaded = true;
-          setStatus(likesFeed, "Loading…");
-          loadFeed("app.bsky.feed.getActorLikes", {}, likesFeed, likesMore, likesCursor);
+          loadLikes(likesFeed, likesMore);
         }
       });
     });
 
-    /* Load more */
+    /* Posts load-more */
     postsMore.addEventListener("click", function () {
-      loadFeed("app.bsky.feed.getAuthorFeed", {}, postsFeed, postsMore, postsCursor);
-    });
-    likesMore.addEventListener("click", function () {
-      loadFeed("app.bsky.feed.getActorLikes", {}, likesFeed, likesMore, likesCursor);
+      loadPosts(postsFeed, postsMore, postsState);
     });
 
     /* Initial posts load */
     setStatus(postsFeed, "Loading…");
-    loadFeed("app.bsky.feed.getAuthorFeed", {}, postsFeed, postsMore, postsCursor);
+    loadPosts(postsFeed, postsMore, postsState);
   });
 
 })();
