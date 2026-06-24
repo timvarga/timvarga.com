@@ -503,7 +503,7 @@ article.post header time {
 }
 
 .tl-node.is-active .tl-detail {
-  max-height: 600px;
+  max-height: 700px;
   border-top-width: 1px;
 }
 
@@ -524,9 +524,9 @@ article.post header time {
   margin: 0 0 0.75rem;
 }
 
-/* Map placeholder box */
+/* Map placeholder box — becomes a Leaflet map once JS initialises it */
 .tl-map-placeholder {
-  height: 160px;
+  height: 180px;
   border-radius: 6px;
   border: 1.5px dashed var(--color-accent);
   background: #f0f4ff;
@@ -535,11 +535,24 @@ article.post header time {
   justify-content: center;
   color: var(--color-accent);
   margin-top: 0.5rem;
+  overflow: hidden; /* clip Leaflet tiles to rounded corners */
+}
+
+/* Once JS swaps to display:block the flex props are gone; keep the height */
+.tl-map-placeholder .leaflet-container {
+  height: 100%;
+  width: 100%;
+  border-radius: 6px;
 }
 
 .tl-map-label {
   font-family: var(--font-mono);
   font-size: 0.8rem;
+}
+
+/* Slightly larger attribution text for readability at small sizes */
+.tl-map-placeholder .leaflet-control-attribution {
+  font-size: 9px;
 }
 
 /* ---------- Social Media ---------- */
