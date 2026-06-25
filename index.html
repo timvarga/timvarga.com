@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tim Varga</title>
-<meta name="description" content="Tim Varga — personal site, portfolio, and blog.">
+<meta name="description" content="Tim Varga — science teacher, earth systems scientist, and nature enthusiast based in Oakland, CA.">
 <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,7 +22,6 @@
     <ul class="nav-links">
       <li><a href="/index.html">Home</a></li>
       <li><a href="/about.html">About</a></li>
-      <li><a href="/blog/index.html">Blog</a></li>
       <li><a href="/social.html">Social</a></li>
       <li><a href="/contact.html">Contact</a></li>
     </ul>
@@ -45,20 +44,31 @@
         I teach science and think a lot about earth systems, the natural world, and the
         way humans interact with it. In between, I take a lot of photos, explore maps
         and place history, and tinker with projects on the web.
-        <!-- TODO: Expand or adjust this paragraph to your liking. -->
       </p>
       <p><a href="/about.html">More about me &rarr;</a></p>
     </section>
 
     <section>
-      <h2>Latest from the blog</h2>
-      <ul class="post-list">
-        <li>
-          <time datetime="2026-06-23">June 23, 2026</time>
-          <a href="/blog/hello-world.html">Hello, world — starting this blog</a>
-        </li>
-      </ul>
-      <p><a href="/blog/index.html">All posts &rarr;</a></p>
+      <h2>On Bluesky</h2>
+      <p>
+        Live feed from
+        <a href="https://bsky.app/profile/tvargs.bsky.social" target="_blank" rel="noopener">@tvargs.bsky.social</a>.
+      </p>
+
+      <div class="bsky-tabs" role="tablist">
+        <button class="bsky-tab is-active" role="tab" data-panel="bsky-panel-posts">Posts &amp; Reposts</button>
+        <button class="bsky-tab" role="tab" data-panel="bsky-panel-likes">Likes</button>
+      </div>
+
+      <div id="bsky-panel-posts" class="bsky-panel is-active" role="tabpanel">
+        <div id="bsky-posts-feed"></div>
+        <button id="bsky-posts-more" class="bsky-load-more">Load more</button>
+      </div>
+
+      <div id="bsky-panel-likes" class="bsky-panel" role="tabpanel">
+        <div id="bsky-likes-feed"></div>
+        <button id="bsky-likes-more" class="bsky-load-more" style="display:none">Load more</button>
+      </div>
     </section>
   </div>
 </main>
@@ -70,6 +80,7 @@
 </footer>
 
 <script src="/assets/js/main.js"></script>
+<script src="/assets/js/bluesky-feed.js"></script>
 <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
 </body>
 </html>
