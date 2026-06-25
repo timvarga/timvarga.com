@@ -171,32 +171,65 @@
 <script>
   document.getElementById('year').textContent = new Date().getFullYear();
 
-  // Tile hover: expand to full-width and reveal description
   (function () {
-    var cards = Array.from(document.querySelectorAll('.social-card'));
+    var grid = document.querySelector('.social-grid');
+    var cards = Array.from(grid.querySelectorAll('.social-card'));
 
-    function expand(card) {
-      cards.forEach(function (c) { c.classList.remove('is-expanded'); });
-      card.classList.add('is-expanded');
-    }
-
-    function collapse(card) {
-      card.classList.remove('is-expanded');
-    }
-
+    // Build the expand overlay for each card from its existing content
     cards.forEach(function (card) {
-      card.addEventListener('mouseenter', function () { expand(card); });
-      card.addEventListener('mouseleave', function () { collapse(card); });
-      // Touch support: tap to expand, tap again (or tap elsewhere) to collapse
-      card.addEventListener('click', function (e) {
-        if (e.target.tagName === 'A') return; // let link clicks through
-        if (card.classList.contains('is-expanded')) {
-          collapse(card);
+      var icon     = card.querySelector('.social-icon').outerHTML;
+      var h3       = card.querySelector('h3').textContent;
+      var handle   = card.querySelector('.handle').textContent;
+      var desc     = card.querySelector('.social-desc').textContent;
+      var btnEl    = card.querySelector('.btn');
+      var btnHref  = btnEl.getAttribute('href');
+      var btnLabel = btnEl.textContent.trim();
+
+      var expand = document.createElement('div');
+      expand.className = 'sc-expand';
+      expand.setAttribute('aria-hidden', 'true');
+      expand.innerHTML =
+        icon +
+        '<div class="sc-expand-body">' +
+          '<h3>' + h3 + '</h3>' +
+          '<span class="handle">' + handle + '</span>' +
+          '<p>' + desc + '</p>' +
+          '<a class="btn" href="' + btnHref + '" target="_blank" rel="noopener">' + btnLabel + '</a>' +
+        '</div>';
+      card.appendChild(expand);
+    });
+
+    // Measure grid and set each panel's width + direction
+    function positionPanels() {
+      var gridRect = grid.getBoundingClientRect();
+      cards.forEach(function (card) {
+        var cardRect = card.getBoundingClientRect();
+        var expand   = card.querySelector('.sc-expand');
+        if (!expand) return;
+
+        // Space available rightward (from card's left edge to grid's right edge)
+        var spaceRight = gridRect.right - cardRect.left;
+        // Space available leftward (from grid's left edge to card's right edge)
+        var spaceLeft  = cardRect.right - gridRect.left;
+
+        if (spaceRight >= spaceLeft) {
+          // More room to the right — expand rightward
+          card.classList.remove('expand-left');
+          expand.style.left  = '0';
+          expand.style.right = '';
+          expand.style.width = Math.round(spaceRight) + 'px';
         } else {
-          expand(card);
+          // More room to the left — expand leftward
+          card.classList.add('expand-left');
+          expand.style.right = '0';
+          expand.style.left  = '';
+          expand.style.width = Math.round(spaceLeft) + 'px';
         }
       });
-    });
+    }
+
+    positionPanels();
+    window.addEventListener('resize', positionPanels);
   })();
 </script>
 </body>

@@ -576,12 +576,14 @@ article.post header time {
   gap: 0.6rem;
   color: #fff;
   min-height: 190px;
-  transition: box-shadow 0.2s ease, transform 0.15s ease;
-  cursor: default;
+  position: relative;
+  overflow: visible; /* allow sc-expand to extend beyond card bounds */
+  z-index: 1;
 }
 
+/* Bring hovered card above its neighbours so the panel overlaps correctly */
 .social-card:hover {
-  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.18);
+  z-index: 10;
 }
 
 /* Platform background colors */
@@ -595,7 +597,7 @@ article.post header time {
 .social-card--flickr    { background: #111111; }
 .social-card--twitter   { background: #000000; }
 
-/* Card body */
+/* Card body — compact face content */
 .social-card-body {
   display: flex;
   flex-direction: column;
@@ -620,16 +622,9 @@ article.post header time {
   display: block;
 }
 
-/* Description — hidden in compact tile; revealed on expand */
+/* Description exists in DOM for accessibility but is visually hidden on the compact tile */
 .social-desc {
-  font-size: 0.88rem;
-  line-height: 1.5;
-  color: rgba(255, 255, 255, 0.9);
-  margin: 0;
-  max-height: 0;
-  overflow: hidden;
-  opacity: 0;
-  transition: max-height 0.3s ease, opacity 0.25s ease, margin 0.25s ease;
+  display: none;
 }
 
 .social-icon {
@@ -638,7 +633,7 @@ article.post header time {
   flex-shrink: 0;
 }
 
-/* Button inside tiles */
+/* Button inside compact tiles */
 .social-card .btn {
   margin-top: auto;
   background: rgba(255, 255, 255, 0.15);
@@ -655,36 +650,98 @@ article.post header time {
   text-decoration: none;
 }
 
-/* Expanded state (JS-toggled .is-expanded) */
-.social-card.is-expanded {
-  grid-column: 1 / -1;
-  flex-direction: row;
+/* ---- Expand overlay (injected by JS) ---- */
+/* Absolutely positioned, so the grid layout never changes.
+   Width is set by JS to fill from the card's edge to the grid boundary.
+   clip-path animates the "slide open" effect. */
+.sc-expand {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  min-height: 100%;
+  background: inherit; /* picks up each card's platform color / gradient */
+  border-radius: calc(var(--radius) + 2px);
+  display: flex;
   align-items: center;
-  text-align: left;
-  padding: 1.5rem 2rem;
-  gap: 1.5rem;
-  min-height: unset;
-  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.2);
-  cursor: default;
+  gap: 1.25rem;
+  padding: 1.25rem 1.5rem;
+  box-sizing: border-box;
+  z-index: 20;
+  pointer-events: none;
+  color: #fff;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.22);
+  /* Start fully clipped (invisible), open to the right */
+  clip-path: inset(0 100% 0 0 round 10px);
+  transition: clip-path 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
 }
 
-.social-card.is-expanded .social-icon {
-  width: 54px;
-  height: 54px;
+/* Last-column variant: panel sits at right:0 and opens leftward */
+.social-card.expand-left .sc-expand {
+  left: auto;
+  right: 0;
+  clip-path: inset(0 0% 0 100% round 10px);
 }
 
-.social-card.is-expanded .social-card-body {
-  align-items: flex-start;
+/* Open on hover — both the card AND the panel area stay hovered (panel is a child) */
+.social-card:hover .sc-expand {
+  clip-path: inset(0 0% 0 0% round 10px);
+  pointer-events: auto;
 }
 
-.social-card.is-expanded .btn {
-  margin-top: 0.5rem;
+/* Expand panel content layout */
+.sc-expand .social-icon {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
 }
 
-.social-card.is-expanded .social-desc {
-  max-height: 8em;
-  opacity: 1;
-  margin: 0.35rem 0 0;
+.sc-expand-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.sc-expand-body h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.sc-expand-body .handle {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.72);
+  display: block;
+  margin: 0;
+}
+
+.sc-expand-body p {
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0.3rem 0 0.45rem;
+}
+
+.sc-expand .btn {
+  align-self: flex-start;
+  margin-top: 0;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  color: #fff;
+  font-size: 0.82rem;
+  padding: 0.4rem 0.85rem;
+}
+
+.sc-expand .btn:hover {
+  background: rgba(255, 255, 255, 0.28);
+  border-color: rgba(255, 255, 255, 0.8);
+  color: #fff;
+  text-decoration: none;
 }
 
 /* ---------- Contact ---------- */
@@ -766,17 +823,7 @@ main {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .social-card.is-expanded {
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    padding: 1.25rem 1rem;
-    gap: 0.75rem;
-  }
-
-  .social-card.is-expanded .social-card-body {
-    align-items: center;
-  }
+  /* On mobile the panel overlay still works — JS re-measures on resize */
 }
 
 /* ==========================================================================
