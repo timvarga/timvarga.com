@@ -1,0 +1,104 @@
+name: Fetch Social Activity
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'   # every 6 hours
+  workflow_dispatch:          # manual trigger
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Fetch public API timestamps and update social-activity.json
+        env:
+          FLICKR_USER_ID: ${{ secrets.FLICKR_USER_ID }}
+          FLICKR_API_KEY: ${{ secrets.FLICKR_API_KEY }}
+        run: |
+          python3 - <<'EOF'
+          import json, urllib.request, os
+          from datetime import datetime, timezone
+
+          DATA_FILE = "assets/data/social-activity.json"
+
+          with open(DATA_FILE) as f:
+              data = json.load(f)
+
+          def set_platform(key, ts):
+              if ts:
+                  data["platforms"][key]["lastActive"] = ts
+                  print(f"  {key}: {ts}")
+              else:
+                  print(f"  {key}: no timestamp returned, skipping")
+
+          def fetch_json(url):
+              req = urllib.request.Request(url, headers={"User-Agent": "timvarga.com/1.0"})
+              with urllib.request.urlopen(req, timeout=10) as r:
+                  return json.loads(r.read())
+
+          # ── Bluesky ──────────────────────────────────────────────────────────
+          try:
+              handle = data["platforms"]["bluesky"]["handle"]
+              url = (
+                  "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed"
+                  f"?actor={handle}&limit=1&filter=posts_no_replies"
+              )
+              feed = fetch_json(url)
+              ts = feed["feed"][0]["post"]["indexedAt"] if feed.get("feed") else None
+              set_platform("bluesky", ts)
+          except Exception as e:
+              print(f"  bluesky error: {e}")
+
+          # ── GitHub ───────────────────────────────────────────────────────────
+          try:
+              handle = data["platforms"]["github"]["handle"]
+              url = f"https://api.github.com/users/{handle}/events/public?per_page=1"
+              events = fetch_json(url)
+              ts = events[0]["created_at"] if events else None
+              set_platform("github", ts)
+          except Exception as e:
+              print(f"  github error: {e}")
+
+          # ── Flickr ───────────────────────────────────────────────────────────
+          try:
+              user_id = os.environ.get("FLICKR_USER_ID", "")
+              api_key = os.environ.get("FLICKR_API_KEY", "")
+              if user_id and api_key:
+                  url = (
+                      "https://api.flickr.com/services/rest/"
+                      f"?method=flickr.people.getPhotos"
+                      f"&api_key={api_key}&user_id={user_id}"
+                      f"&per_page=1&extras=date_upload&format=json&nojsoncallback=1"
+                  )
+                  result = fetch_json(url)
+                  photos = result.get("photos", {}).get("photo", [])
+                  if photos:
+                      upload_epoch = int(photos[0]["dateupload"])
+                      ts = datetime.fromtimestamp(upload_epoch, tz=timezone.utc).isoformat()
+                      set_platform("flickr", ts)
+                  else:
+                      print("  flickr: no photos returned")
+              else:
+                  print("  flickr: FLICKR_USER_ID or FLICKR_API_KEY not set, skipping")
+          except Exception as e:
+              print(f"  flickr error: {e}")
+
+          # ── Write back ───────────────────────────────────────────────────────
+          data["updatedAt"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+          with open(DATA_FILE, "w") as f:
+              json.dump(data, f, indent=2)
+          print("Done.")
+          EOF
+
+      - name: Commit if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add assets/data/social-activity.json
+          git diff --cached --quiet || \
+            git commit -m "chore: update social activity timestamps [skip ci]"
+          git push

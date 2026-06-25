@@ -1,0 +1,50 @@
+{
+  "updatedAt": "2026-06-25T18:58:00Z",
+  "platforms": {
+    "bluesky": {
+      "lastActive": null,
+      "source": "api",
+      "handle": "tvargs.bsky.social"
+    },
+    "github": {
+      "lastActive": null,
+      "source": "api",
+      "handle": "timvarga"
+    },
+    "flickr": {
+      "lastActive": null,
+      "source": "api",
+      "handle": "timvarga"
+    },
+    "instagram": {
+      "lastActive": null,
+      "source": "ifttt",
+      "handle": "tim"
+    },
+    "strava": {
+      "lastActive": "2026-06-01T00:00:00Z",
+      "source": "manual",
+      "handle": "timvarga"
+    },
+    "pinterest": {
+      "lastActive": "2026-01-01T00:00:00Z",
+      "source": "manual",
+      "handle": "timvarga"
+    },
+    "linkedin": {
+      "lastActive": "2026-01-01T00:00:00Z",
+      "source": "manual",
+      "handle": "timvarga"
+    },
+    "facebook": {
+      "lastActive": "2025-01-01T00:00:00Z",
+      "source": "manual",
+      "handle": "timvarga"
+    },
+    "twitter": {
+      "lastActive": "2022-10-27T00:00:00Z",
+      "source": "manual",
+      "handle": "tvargs"
+    }
+  }
+}

@@ -1,0 +1,75 @@
+name: IFTTT Social Dispatch
+
+on:
+  repository_dispatch:
+    types:
+      - instagram_post
+      - facebook_post
+      - linkedin_post
+      - strava_activity
+      - pinterest_post
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install dependencies
+        run: pip install python-dateutil --break-system-packages --quiet
+
+      - name: Update platform timestamp from IFTTT
+        run: |
+          python3 - <<'EOF'
+          import json, sys
+          from datetime import datetime, timezone
+          from dateutil import parser as dp
+
+          EVENT_MAP = {
+              "instagram_post":  "instagram",
+              "facebook_post":   "facebook",
+              "linkedin_post":   "linkedin",
+              "strava_activity": "strava",
+              "pinterest_post":  "pinterest",
+          }
+
+          event_type = "${{ github.event.action }}"
+          platform   = EVENT_MAP.get(event_type)
+
+          if not platform:
+              print(f"Unknown event type: {event_type}")
+              sys.exit(0)
+
+          client_ts = "${{ github.event.client_payload.timestamp }}"
+          if client_ts and client_ts not in ("", "null"):
+              try:
+                  ts = dp.parse(client_ts).astimezone(timezone.utc).isoformat()
+              except Exception:
+                  ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+          else:
+              ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+          DATA_FILE = "assets/data/social-activity.json"
+          with open(DATA_FILE) as f:
+              data = json.load(f)
+
+          data["platforms"][platform]["lastActive"] = ts
+          data["updatedAt"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+          with open(DATA_FILE, "w") as f:
+              json.dump(data, f, indent=2)
+
+          print(f"Updated {platform} -> {ts}")
+          EOF
+
+      - name: Commit and push
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add assets/data/social-activity.json
+          git diff --cached --quiet || \
+            git commit -m "chore: update ${{ github.event.action }} timestamp [skip ci]"
+          git push
