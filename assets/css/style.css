@@ -156,6 +156,17 @@ p { margin: 0 0 1em; }
   pointer-events: none;
 }
 
+/* Invisible bridge fills the gap between the nav item and the dropdown,
+   keeping :hover alive while the mouse travels downward */
+.nav-dropdown::before {
+  content: '';
+  position: absolute;
+  top: -0.75rem;
+  left: -0.5rem;
+  right: -0.5rem;
+  height: 0.75rem;
+}
+
 .nav-item--has-dropdown:hover .nav-dropdown {
   opacity: 1;
   visibility: visible;
