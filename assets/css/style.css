@@ -123,6 +123,80 @@ p { margin: 0 0 1em; }
   text-decoration: none;
 }
 
+/* Socials dropdown */
+.nav-item--has-dropdown {
+  position: relative;
+}
+
+.nav-item--has-dropdown > a::after {
+  content: ' ▾';
+  font-size: 0.7em;
+  opacity: 0.5;
+  vertical-align: middle;
+}
+
+.nav-dropdown {
+  position: absolute;
+  top: calc(100% + 0.6rem);
+  right: 0;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  padding: 0.5rem;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+  z-index: 100;
+  /* Animate in */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity 0.15s ease, visibility 0.15s ease, transform 0.15s ease;
+  pointer-events: none;
+}
+
+.nav-item--has-dropdown:hover .nav-dropdown {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* Individual icon tiles */
+.ndi {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: transform 0.12s ease, opacity 0.12s ease;
+  flex-shrink: 0;
+}
+
+.ndi:hover {
+  transform: scale(1.12);
+  opacity: 0.88;
+  text-decoration: none;
+}
+
+.ndi svg {
+  width: 20px;
+  height: 20px;
+}
+
+.ndi--bluesky   { background: #0085ff; }
+.ndi--linkedin  { background: #0a66c2; }
+.ndi--strava    { background: #fc4c02; }
+.ndi--instagram { background: linear-gradient(135deg, #f09433 0%, #dc2743 50%, #bc1888 100%); }
+.ndi--facebook  { background: #1877f2; }
+.ndi--pinterest { background: #e60023; }
+.ndi--github    { background: #1a1a1a; }
+.ndi--flickr    { background: #111; }
+.ndi--twitter   { background: #000; }
+
 .nav-toggle {
   display: none;
   background: none;
