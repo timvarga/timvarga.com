@@ -642,192 +642,62 @@ article.post header time {
 
 /* ---------- Social Media ---------- */
 
-.social-grid {
+.social-tile-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 0.75rem;
   margin-top: 1.5rem;
 }
 
-/* Base tile — compact */
-.social-card {
-  border: none;
-  border-radius: calc(var(--radius) + 2px);
+.stile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   padding: 1.5rem 1rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 0.6rem;
-  color: #fff;
-  min-height: 190px;
-  position: relative;
-  overflow: visible; /* allow sc-expand to extend beyond card bounds */
-  z-index: 1;
-}
-
-/* Bring hovered card above its neighbours so the panel overlaps correctly */
-.social-card:hover {
-  z-index: 10;
-}
-
-/* Platform background colors */
-.social-card--bluesky   { background: #0085ff; }
-.social-card--linkedin  { background: #0a66c2; }
-.social-card--strava    { background: #fc4c02; }
-.social-card--instagram { background: linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); }
-.social-card--facebook  { background: #1877f2; }
-.social-card--pinterest { background: #e60023; }
-.social-card--github    { background: #1a1a1a; }
-.social-card--flickr    { background: #111111; }
-.social-card--twitter   { background: #000000; }
-
-/* Card body — compact face content */
-.social-card-body {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.3rem;
-  flex: 1;
-  width: 100%;
-}
-
-.social-card h3 {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 700;
-  color: #fff;
-}
-
-.social-card .handle {
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.72);
-  margin: 0;
-  display: block;
-}
-
-/* Description exists in DOM for accessibility but is visually hidden on the compact tile */
-.social-desc {
-  display: none;
-}
-
-.social-icon {
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
-}
-
-/* Button inside compact tiles */
-.social-card .btn {
-  margin-top: auto;
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  color: #fff;
-  font-size: 0.82rem;
-  padding: 0.4rem 0.85rem;
-}
-
-.social-card .btn:hover {
-  background: rgba(255, 255, 255, 0.28);
-  border-color: rgba(255, 255, 255, 0.8);
-  color: #fff;
-  text-decoration: none;
-}
-
-/* ---- Expand overlay (injected by JS) ---- */
-/* Absolutely positioned, so the grid layout never changes.
-   Width is set by JS to fill from the card's edge to the grid boundary.
-   clip-path animates the "slide open" effect. */
-.sc-expand {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  min-height: 100%;
-  background: inherit; /* picks up each card's platform color / gradient */
   border-radius: calc(var(--radius) + 2px);
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  padding: 1.25rem 1.5rem;
-  box-sizing: border-box;
-  z-index: 20;
-  pointer-events: none;
+  text-decoration: none;
   color: #fff;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.22);
-  /* Start fully clipped (invisible), open to the right */
-  clip-path: inset(0 100% 0 0 round 10px);
-  transition: clip-path 0.32s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
+  text-align: center;
+  transition: transform 0.12s ease, opacity 0.12s ease;
 }
 
-/* Last-column variant: panel sits at right:0 and opens leftward */
-.social-card.expand-left .sc-expand {
-  left: auto;
-  right: 0;
-  clip-path: inset(0 0% 0 100% round 10px);
+.stile:hover {
+  transform: scale(1.06);
+  opacity: 0.9;
+  text-decoration: none;
 }
 
-/* Open on hover — both the card AND the panel area stay hovered (panel is a child) */
-.social-card:hover .sc-expand {
-  clip-path: inset(0 0% 0 0% round 10px);
-  pointer-events: auto;
-}
-
-/* Expand panel content layout */
-.sc-expand .social-icon {
-  width: 44px;
-  height: 44px;
+.stile svg {
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
 }
 
-.sc-expand-body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  flex: 1;
-  min-width: 0;
-}
-
-.sc-expand-body h3 {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 700;
-  color: #fff;
-}
-
-.sc-expand-body .handle {
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.72);
-  display: block;
-  margin: 0;
-}
-
-.sc-expand-body p {
+.stile-name {
   font-size: 0.88rem;
-  line-height: 1.5;
-  color: rgba(255, 255, 255, 0.9);
-  margin: 0.3rem 0 0.45rem;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.2;
 }
 
-.sc-expand .btn {
-  align-self: flex-start;
-  margin-top: 0;
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  color: #fff;
-  font-size: 0.82rem;
-  padding: 0.4rem 0.85rem;
+.stile-handle {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.72);
+  line-height: 1.2;
 }
 
-.sc-expand .btn:hover {
-  background: rgba(255, 255, 255, 0.28);
-  border-color: rgba(255, 255, 255, 0.8);
-  color: #fff;
-  text-decoration: none;
-}
+.stile--bluesky   { background: #0085ff; }
+.stile--linkedin  { background: #0a66c2; }
+.stile--strava    { background: #fc4c02; }
+.stile--instagram { background: linear-gradient(135deg, #f09433 0%, #dc2743 50%, #bc1888 100%); }
+.stile--facebook  { background: #1877f2; }
+.stile--pinterest { background: #e60023; }
+.stile--github    { background: #1a1a1a; }
+.stile--flickr    { background: #111; }
+.stile--twitter   { background: #000; }
 
 /* ---------- Contact ---------- */
 
@@ -904,11 +774,9 @@ main {
     grid-template-columns: 1fr;
   }
 
-  .social-grid {
+  .social-tile-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-
-  /* On mobile the panel overlay still works — JS re-measures on resize */
 }
 
 /* ==========================================================================
