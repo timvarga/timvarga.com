@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/css/style.css">
+<link rel="stylesheet" href="https://townsquare.cauenapier.com/widget.css">
 </head>
 <body>
 
@@ -94,5 +95,15 @@
 <script src="/assets/js/main.js"></script>
 <script src="/assets/js/bluesky-feed.js"></script>
 <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+<div id="townsquare-root"></div>
+<script type="module">
+  import { mountTownSquare } from "https://townsquare.cauenapier.com/townsquare.mjs";
+  mountTownSquare(document.getElementById("townsquare-root"), {
+    serverOrigin: "https://townsquare.cauenapier.com",
+    siteKey: "site_FatlVP8rmZ0S8j8W",
+    scene: {"benches":2,"benchXs":[0.2,0.72],"trees":6,"treeXs":[0.8,0.58,0.36,0.9,0.18,0.68],"lamps":1,"lampXs":[0.12],"birds":1},
+    theme: "host"
+  });
+</script>
 </body>
 </html>
