@@ -230,7 +230,8 @@ p { margin: 0 0 1em; }
 .hero {
   position: relative;
   overflow: hidden;
-  min-height: 480px;
+  min-height: 100vh;
+  min-height: 100svh;
   display: flex;
   align-items: center;
   margin-bottom: 2rem;
@@ -814,7 +815,8 @@ main {
   }
 
   .hero {
-    min-height: 360px;
+    min-height: 100vh;
+    min-height: 100svh;
   }
 
   .hero h1 {
