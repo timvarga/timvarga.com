@@ -786,6 +786,10 @@ main {
   padding-bottom: 2rem;
 }
 
+main > .container:first-child {
+  padding-top: 3rem;
+}
+
 /* ---------- Responsive ---------- */
 
 @media (max-width: 640px) {
