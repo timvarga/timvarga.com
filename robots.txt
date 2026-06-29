@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
+Disallow: /dinner-tracker.html
 
 Sitemap: https://timvarga.com/sitemap.xml
