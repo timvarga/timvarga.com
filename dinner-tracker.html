@@ -1064,19 +1064,36 @@ function render(){
 let unsubscribeCloud = null;
 let firstSnapshot = true;
 
+function showCloudStatus(message, isError){
+  const app = document.getElementById("app");
+  if (!app) return;
+  const bg = isError ? "#fde8e8" : "var(--card)";
+  const fg = isError ? "#7a1f1f" : "var(--muted)";
+  app.innerHTML = `<div class="save-banner" style="background:${bg};color:${fg};">${message}</div>`;
+}
+
 window.addEventListener("fb-signed-in", () => {
   if (unsubscribeCloud) unsubscribeCloud();
   firstSnapshot = true;
+  showCloudStatus("Connecting to your synced data…", false);
   unsubscribeCloud = window.__fb.subscribe(async (data) => {
     if (data && data.recipes && data.log) {
       state = data;
       render();
     } else if (firstSnapshot) {
       // No cloud document yet — bootstrap it with the local seed data.
-      try { await window.__fb.saveState(state); } catch(err){ console.error("Bootstrap save failed:", err); }
-      render();
+      try {
+        await window.__fb.saveState(state);
+        render();
+      } catch(err){
+        console.error("Bootstrap save failed:", err);
+        showCloudStatus("Couldn't create the cloud data document: <strong>" + (err && err.message || err) + "</strong>.<br>In the Firebase console, check that Firestore Database has been created (Firestore Database &rarr; Create database) and that the security rules have been published.", true);
+        return;
+      }
     }
     firstSnapshot = false;
+  }, (err) => {
+    showCloudStatus("Couldn't connect to the cloud database: <strong>" + (err && err.message || err) + "</strong>.<br>In the Firebase console, check that Firestore Database has been created and that the security rules have been published (Firestore Database &rarr; Rules).", true);
   });
 });
 
@@ -1121,11 +1138,14 @@ window.__fb = {
   currentUser: null,
   signOutUser(){ return signOut(auth); },
   saveState(state){ return setDoc(HOUSEHOLD_DOC, state); },
-  subscribe(onData){
+  subscribe(onData, onError){
     return onSnapshot(
       HOUSEHOLD_DOC,
       (snap) => onData(snap.exists() ? snap.data() : null),
-      (err) => console.error("Firestore listen error:", err)
+      (err) => {
+        console.error("Firestore listen error:", err);
+        if (onError) onError(err);
+      }
     );
   }
 };
