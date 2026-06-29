@@ -71,15 +71,16 @@
   .save-banner{background:#fbf0d4;border:1px solid #e8c468;border-radius:8px;padding:10px 14px;font-size:12.5px;margin-bottom:14px;color:#5a4317;}
   textarea{min-height:50px;resize:vertical;}
 
-  /* ---- Password gate ---- */
+  /* ---- Login gate ---- */
   #authGate{position:fixed;inset:0;background:var(--green);display:flex;align-items:center;justify-content:center;z-index:999;padding:20px;}
   #authGate .gate-box{background:#fff;border-radius:12px;padding:28px 24px;max-width:320px;width:100%;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.25);}
   #authGate h2{margin:0 0 4px;color:var(--green);font-size:18px;}
   #authGate p{margin:0 0 16px;color:var(--muted);font-size:13px;}
-  #authGate input[type=password]{text-align:center;font-size:15px;margin-bottom:10px;}
+  #authGate input{text-align:center;font-size:15px;margin-bottom:10px;}
   #authGate button{width:100%;background:var(--green);color:#fff;border:none;border-radius:6px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;}
   #authGate button:hover{background:var(--green-light);}
   #authGate .gate-error{color:var(--urgent);font-size:12.5px;min-height:18px;margin-top:8px;}
+  .signout-btn{background:rgba(255,255,255,.12)!important;}
 </style>
 </head>
 <body>
@@ -87,10 +88,11 @@
 <div id="authGate">
   <div class="gate-box">
     <h2>🍽 Dinner Tracker</h2>
-    <p>Enter the password to continue.</p>
-    <form id="gateForm" autocomplete="off">
-      <input type="password" id="gatePw" placeholder="Password" autocomplete="off">
-      <button type="submit">Unlock</button>
+    <p>Sign in to continue.</p>
+    <form id="gateForm" autocomplete="on">
+      <input type="email" id="gateEmail" placeholder="Email" autocomplete="username">
+      <input type="password" id="gatePw" placeholder="Password" autocomplete="current-password">
+      <button type="submit">Sign In</button>
       <div class="gate-error" id="gateError"></div>
     </form>
   </div>
@@ -101,11 +103,12 @@
 <header>
   <div>
     <h1>🍽 Dinner Tracker</h1>
-    <div class="sub">Wheat-free · dairy-free · pescatarian meal database</div>
+    <div class="sub" id="userSub">Wheat-free · dairy-free · pescatarian meal database</div>
   </div>
   <div class="iobtns">
-    <button onclick="loadFile()">⬆ Load Data</button>
-    <button onclick="saveFile()">⬇ Save Data</button>
+    <button onclick="loadFile()">⬆ Import Backup</button>
+    <button onclick="saveFile()">⬇ Export Backup</button>
+    <button class="signout-btn" onclick="window.__fb.signOutUser()">Sign Out</button>
     <input type="file" id="fileInput" accept="application/json" style="display:none" onchange="handleFile(event)">
   </div>
 </header>
@@ -643,6 +646,18 @@ const TABS = [
   {id:"addrecipe", label:"Add Recipe"},
 ];
 
+/* =========================================================
+   CLOUD AUTOSAVE (debounced — see Firebase script at bottom)
+   ========================================================= */
+let saveTimer = null;
+function queueSave(){
+  if (!window.__fb) return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    window.__fb.saveState(state).catch(err => console.error("Cloud save failed:", err));
+  }, 500);
+}
+
 function recipeById(id){ return state.recipes.find(r => r.id === id); }
 function fmtDate(iso){
   const d = new Date(iso + "T00:00:00");
@@ -744,18 +759,20 @@ function markCooked(logId){
   if (!l) return;
   l.status = "cooked";
   render();
+  queueSave();
 }
 function markSkipped(logId){
   const l = state.log.find(x => x.id === logId);
   if (!l) return;
   l.status = "skipped";
   render();
+  queueSave();
 }
 function editNote(logId){
   const l = state.log.find(x => x.id === logId);
   if (!l) return;
   const v = prompt("Note for this meal:", l.note || "");
-  if (v !== null){ l.note = v; render(); }
+  if (v !== null){ l.note = v; render(); queueSave(); }
 }
 
 /* =========================================================
@@ -810,6 +827,7 @@ function scheduleRecipe(recipeId){
   state.log.push({id:"l"+Date.now(), recipeId, date, headcount, status:"planned", note:""});
   activeTab = "upcoming";
   render();
+  queueSave();
 }
 
 /* =========================================================
@@ -924,6 +942,7 @@ function rescheduleSkipped(logId){
   l.date = date;
   l.status = "planned";
   render();
+  queueSave();
 }
 
 /* =========================================================
@@ -1006,7 +1025,8 @@ function handleFile(evt){
       if (!data.recipes || !data.log) throw new Error("Missing recipes/log");
       state = data;
       render();
-      alert("Data loaded.");
+      queueSave();
+      alert("Backup imported and synced to the cloud.");
     } catch(err){
       alert("Couldn't read that file: " + err.message);
     }
@@ -1029,65 +1049,121 @@ function render(){
   else if (activeTab === "addrecipe") body = renderAddRecipe();
 
   app.innerHTML = `
-    <div class="save-banner">Remember to hit <strong>Save Data</strong> before closing this page — it downloads a JSON file with everything you've logged. Use <strong>Load Data</strong> next time you open this file to pick up where you left off.</div>
+    <div class="save-banner">Synced automatically to the cloud as you make changes — your phone and computer always show the same data. Use <strong>Export Backup</strong> any time you want an offline copy.</div>
     ${body}
-    <div class="footer-note">Dinner Tracker · standalone file, no internet connection used or required.</div>`;
+    <div class="footer-note">Dinner Tracker · synced live via Firebase.</div>`;
 }
 
-render();
+/* =========================================================
+   CLOUD SYNC — kicks off once Firebase reports a signed-in
+   user (see the Firebase module script below). On first ever
+   sign-in there's no cloud document yet, so the local seed
+   data is pushed up to bootstrap it; after that, this device
+   and any other signed-in device stay in sync in real time.
+   ========================================================= */
+let unsubscribeCloud = null;
+let firstSnapshot = true;
+
+window.addEventListener("fb-signed-in", () => {
+  if (unsubscribeCloud) unsubscribeCloud();
+  firstSnapshot = true;
+  unsubscribeCloud = window.__fb.subscribe(async (data) => {
+    if (data && data.recipes && data.log) {
+      state = data;
+      render();
+    } else if (firstSnapshot) {
+      // No cloud document yet — bootstrap it with the local seed data.
+      try { await window.__fb.saveState(state); } catch(err){ console.error("Bootstrap save failed:", err); }
+      render();
+    }
+    firstSnapshot = false;
+  });
+});
+
+window.addEventListener("fb-signed-out", () => {
+  if (unsubscribeCloud) { unsubscribeCloud(); unsubscribeCloud = null; }
+});
 </script>
 
 </div> <!-- /#appContent -->
 
-<script>
+<script type="module">
 /* =========================================================
-   PASSWORD GATE
-   Client-side only — this deters casual visitors and keeps
-   the page out of search results, but is not real security
-   (anyone who reads the page source can find the hash).
-   The correct password's SHA-256 hash is stored below; the
-   plaintext password is never written into this file.
+   FIREBASE AUTH + FIRESTORE
+   Real per-user login (only accounts manually added in the
+   Firebase console can sign in — there is no public sign-up
+   form here) and a live-synced cloud document that replaces
+   the old manual Save/Load-as-the-only-option flow.
    ========================================================= */
-(function(){
-  const CORRECT_HASH = "de192763e7e664626fc21db274a5b9a6a75a5f9160922c0b177db758ede902c4";
-  const STORAGE_KEY = "dinnerTrackerAuthed";
-  const gate = document.getElementById("authGate");
-  const content = document.getElementById("appContent");
-  const form = document.getElementById("gateForm");
-  const pwInput = document.getElementById("gatePw");
-  const errorEl = document.getElementById("gateError");
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, setDoc, onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-  async function sha256Hex(text){
-    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,"0")).join("");
+const firebaseConfig = {
+  apiKey: "AIzaSyBDqSpm_KROvGwy43VnUUs0ZeEIqfynVbk",
+  authDomain: "timvarga-dinner-tracker.firebaseapp.com",
+  projectId: "timvarga-dinner-tracker",
+  storageBucket: "timvarga-dinner-tracker.firebasestorage.app",
+  messagingSenderId: "51796761695",
+  appId: "1:51796761695:web:21ff52ff3e5c8818618fea"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const auth = getAuth(fbApp);
+const db = getFirestore(fbApp);
+const HOUSEHOLD_DOC = doc(db, "household", "shared");
+
+window.__fb = {
+  currentUser: null,
+  signOutUser(){ return signOut(auth); },
+  saveState(state){ return setDoc(HOUSEHOLD_DOC, state); },
+  subscribe(onData){
+    return onSnapshot(
+      HOUSEHOLD_DOC,
+      (snap) => onData(snap.exists() ? snap.data() : null),
+      (err) => console.error("Firestore listen error:", err)
+    );
   }
+};
 
-  function unlock(){
+const gate = document.getElementById("authGate");
+const content = document.getElementById("appContent");
+const form = document.getElementById("gateForm");
+const emailInput = document.getElementById("gateEmail");
+const pwInput = document.getElementById("gatePw");
+const errorEl = document.getElementById("gateError");
+const userSub = document.getElementById("userSub");
+
+form.addEventListener("submit", async function(e){
+  e.preventDefault();
+  errorEl.textContent = "";
+  try {
+    await signInWithEmailAndPassword(auth, emailInput.value.trim(), pwInput.value);
+    pwInput.value = "";
+  } catch (err) {
+    errorEl.textContent = "Sign-in failed — check your email and password.";
+  }
+});
+
+onAuthStateChanged(auth, (user) => {
+  window.__fb.currentUser = user;
+  if (user) {
     gate.style.display = "none";
     content.style.display = "";
-  }
-
-  // Stay unlocked across visits on this device (until cleared).
-  if (localStorage.getItem(STORAGE_KEY) === CORRECT_HASH) {
-    unlock();
+    if (userSub) userSub.textContent = "Signed in as " + user.email + " · synced live";
+    window.dispatchEvent(new CustomEvent("fb-signed-in"));
   } else {
-    pwInput.focus();
+    content.style.display = "none";
+    gate.style.display = "";
+    errorEl.textContent = "";
+    emailInput.focus();
+    window.dispatchEvent(new CustomEvent("fb-signed-out"));
   }
-
-  form.addEventListener("submit", async function(e){
-    e.preventDefault();
-    const hash = await sha256Hex(pwInput.value);
-    if (hash === CORRECT_HASH) {
-      localStorage.setItem(STORAGE_KEY, hash);
-      errorEl.textContent = "";
-      unlock();
-    } else {
-      errorEl.textContent = "Incorrect password.";
-      pwInput.value = "";
-      pwInput.focus();
-    }
-  });
-})();
+});
 </script>
 
 </body>
