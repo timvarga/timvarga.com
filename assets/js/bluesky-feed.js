@@ -13,7 +13,7 @@
   var HANDLE     = "tvargs.bsky.social";
   var API        = "https://public.api.bsky.app/xrpc/";
   var LIKES_JSON = "/assets/data/likes.json";
-  var LIMIT      = 20;
+  var LIMIT      = 5;
 
   /* ── UTILITIES ─────────────────────────────────────────── */
 
