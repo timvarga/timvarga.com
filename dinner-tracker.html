@@ -597,6 +597,29 @@ const SEED_RECIPES = [
   "Turn shrimp, scatter lemon wedges on top; broil 2 min more.",
   "Squeeze warm lemon over everything, sprinkle with parsley if using. Serve immediately, on its own or tossed with pasta."
  ]},
+{id:"r21", title:"Crispy Tofu Salad with Beets, Quinoa & Lemon-Tahini Dressing", servings:2,
+ cuisine:"Mediterranean", method:"Stovetop", activeMin:20, totalMin:30,
+ dietary:["wheat-free","dairy-free","pescatarian"], leftoverFriendly:false, repeatOf:null, source:null,
+ ingredients:[
+  {name:"Firm tofu", qty:"14oz, pressed and cubed", type:"protein"},
+  {name:"Salad mix / mixed greens", qty:"4 cups", type:"vegetable"},
+  {name:"Pre-cooked beets", qty:"1 cup, diced or sliced", type:"vegetable"},
+  {name:"Quinoa", qty:"⅓ cup dry", type:"grain"},
+  {name:"Tahini", qty:"3 tbsp", type:"condiment"},
+  {name:"Lemon", qty:"1 large", type:"fruit"},
+  {name:"Garlic", qty:"1 clove, minced", type:"vegetable"},
+  {name:"Maple syrup", qty:"1 tsp", type:"condiment"},
+  {name:"Olive oil", qty:"1 tbsp", type:"condiment"},
+  {name:"Salt & pepper", qty:"to taste", type:"condiment"},
+ ],
+ steps:[
+  "Cook quinoa: combine ⅓ cup quinoa with ⅔ cup water, bring to a boil, cover and simmer until absorbed (15 min). Fluff and set aside.",
+  "Press and cube tofu; pat dry well with paper towels.",
+  "Heat olive oil in a skillet over medium-high. Sear tofu, undisturbed, until golden and crispy on most sides (8–10 min total). Season with salt.",
+  "Whisk tahini, lemon juice, garlic, maple syrup, and 2–3 tbsp water until smooth and pourable.",
+  "Divide salad mix between bowls. Top with warm quinoa, crispy tofu, and beets.",
+  "Drizzle generously with dressing and serve immediately."
+ ]},
 ];
 
 const SEED_LOG = [
@@ -604,8 +627,8 @@ const SEED_LOG = [
   {id:"l2", recipeId:"r5", date:"2026-06-27", headcount:2, status:"cooked", note:""},
   {id:"l3", recipeId:"r20", date:"2026-06-28", headcount:2, status:"planned",
    note:"Added for tonight. Built dairy-free (plant-based butter swap for the corn). Recipe yields 4–6 — with 2 eating, the rest is a ready-made lunch or dinner tomorrow."},
-  {id:"l4", recipeId:"r20", date:"2026-06-29", headcount:2, status:"planned",
-   note:"Leftovers from last night's shrimp boil, plus sautéed bok choy on the side — uses it up while it's still good."},
+  {id:"l4", recipeId:"r21", date:"2026-06-29", headcount:2, status:"planned",
+   note:"Using up the salad mix tonight. Bok choy already used up as a side."},
   {id:"l5", recipeId:"r2", date:"2026-06-30", headcount:2, status:"planned",
    note:"Mahi mahi comes frozen from Costco, so there's no rush on the fish itself. Cook all 3 fillets even though only 2 are eating; extra makes a great next-day lunch."},
   {id:"l6", recipeId:"r3", date:"2026-07-01", headcount:3, status:"planned",
@@ -638,9 +661,12 @@ let pantrySelection = new Set();
 let pantryFilter = "";
 let libraryFilter = "";
 let matchMode = "overlap";
+let groceryDays = 7;
+let groceryChecked = new Set();
 
 const TABS = [
   {id:"upcoming", label:"Tonight & Upcoming"},
+  {id:"grocerylist", label:"Grocery List"},
   {id:"library", label:"Recipe Library"},
   {id:"whatcanimake", label:"What Can I Make?"},
   {id:"history", label:"History"},
@@ -1002,6 +1028,84 @@ function addRecipe(){
 }
 
 /* =========================================================
+   RENDER: GROCERY LIST
+   ========================================================= */
+function renderGroceryList(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const upcoming = state.log
+    .filter(l => l.status === "planned" && new Date(l.date + "T00:00:00") >= today)
+    .sort((a,b) => a.date.localeCompare(b.date))
+    .slice(0, groceryDays);
+
+  if (upcoming.length === 0){
+    return `<div class="panel-title">Grocery List</div><div class="empty">No upcoming planned meals.</div>`;
+  }
+
+  const byType = {};
+  upcoming.forEach(l => {
+    const r = recipeById(l.recipeId);
+    if (!r) return;
+    r.ingredients.forEach((i, ingIdx) => {
+      const type = i.type || "other";
+      if (!byType[type]) byType[type] = [];
+      byType[type].push({name:i.name, qty:i.qty, frozen:!!i.frozen,
+        meal:r.title.split(",")[0], key:l.id+"_"+ingIdx});
+    });
+  });
+
+  const typeOrder = ["protein","vegetable","fruit","legume","grain","fermented","condiment","other"];
+
+  let html = `<div class="panel-title">Grocery List</div>
+  <div class="card">
+    <div style="font-size:12px;font-weight:600;color:var(--green);margin-bottom:8px;">Covering ${upcoming.length} meals:</div>
+    ${upcoming.map(l => {
+      const r = recipeById(l.recipeId);
+      const d = new Date(l.date+"T00:00:00");
+      const label = d.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
+      return `<div style="font-size:12.5px;color:var(--text);margin-bottom:3px;">📅 ${label} — ${r ? r.title.split(",")[0] : "?"}</div>`;
+    }).join("")}
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+      <button onclick="groceryDays=5; render()" style="font-size:12px;padding:5px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:${groceryDays===5?"var(--green)":"#fff"};color:${groceryDays===5?"#fff":"var(--text)"};">5 meals</button>
+      <button onclick="groceryDays=7; render()" style="font-size:12px;padding:5px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:${groceryDays===7?"var(--green)":"#fff"};color:${groceryDays===7?"#fff":"var(--text)"};">7 meals</button>
+      <button onclick="groceryChecked.clear(); render()" style="font-size:12px;padding:5px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:#fff;color:var(--muted);">Clear checks</button>
+    </div>
+  </div>`;
+
+  let totalItems = 0;
+  typeOrder.forEach(type => {
+    const items = byType[type];
+    if (!items || !items.length) return;
+    totalItems += items.length;
+    html += `<div class="card">
+      <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:6px;">${TYPE_LABELS[type]||type}</div>`;
+    items.forEach(item => {
+      const checked = groceryChecked.has(item.key);
+      const frozenTag = item.frozen
+        ? ` <span style="font-size:10px;background:#ddeeff;color:#1a6090;border-radius:4px;padding:1px 5px;margin-left:4px;">❄ frozen</span>` : "";
+      html += `<label style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;">
+        <input type="checkbox" ${checked?"checked":""} onchange="toggleGrocery('${item.key}')"
+          style="width:18px;height:18px;margin-top:1px;flex-shrink:0;accent-color:var(--green);">
+        <div style="flex:1;${checked?"opacity:0.4;text-decoration:line-through;":""}">
+          <span style="font-size:13.5px;">${item.name}${frozenTag}</span>
+          <span style="font-size:12px;color:var(--muted);margin-left:6px;">${item.qty}</span>
+          <div style="font-size:11px;color:var(--muted);margin-top:1px;">${item.meal}</div>
+        </div>
+      </label>`;
+    });
+    html += `</div>`;
+  });
+
+  html += `<div class="footer-note">${groceryChecked.size} of ${totalItems} items checked off · tap to mark what you already have</div>`;
+  return html;
+}
+
+function toggleGrocery(key){
+  if (groceryChecked.has(key)) groceryChecked.delete(key);
+  else groceryChecked.add(key);
+  render();
+}
+
+/* =========================================================
    SAVE / LOAD
    ========================================================= */
 function saveFile(){
@@ -1044,6 +1148,7 @@ function render(){
   const app = document.getElementById("app");
   let body = "";
   if (activeTab === "upcoming") body = renderUpcoming();
+  else if (activeTab === "grocerylist") body = renderGroceryList();
   else if (activeTab === "library") body = renderLibrary();
   else if (activeTab === "whatcanimake") body = renderWhatCanIMake();
   else if (activeTab === "history") body = renderHistory();
