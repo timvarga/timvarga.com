@@ -3,25 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>About — Tim Varga</title>
-<meta name="description" content="About Tim Varga — science teacher, earth systems scientist, and data visualization practitioner based in Oakland, CA.">
-<!-- Open Graph / Social preview -->
+<title>Explore — Tim Varga</title>
+<meta name="description" content="Constructed pieces — interactive tools, data visualizations, and annotated finds from Tim Varga.">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://timvarga.com/about.html">
-<meta property="og:title" content="About — Tim Varga">
-<meta property="og:description" content="Science teacher and earth systems scientist based in Oakland, CA — interested in people, places, and the systems that connect us.">
+<meta property="og:url" content="https://timvarga.com/explore/">
+<meta property="og:title" content="Explore — Tim Varga">
+<meta property="og:description" content="Interactive tools, visualizations, and annotated finds.">
 <meta property="og:image" content="https://timvarga.com/assets/img/hero-poster.jpg">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="About — Tim Varga">
-<meta name="twitter:description" content="Science teacher and earth systems scientist based in Oakland, CA — interested in people, places, and the systems that connect us.">
+<meta name="twitter:title" content="Explore — Tim Varga">
+<meta name="twitter:description" content="Interactive tools, visualizations, and annotated finds.">
 <meta name="twitter:image" content="https://timvarga.com/assets/img/hero-poster.jpg">
 <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/css/style.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="https://townsquare.cauenapier.com/widget.css">
 </head>
 <body>
 
@@ -34,7 +31,7 @@
     <ul class="nav-links">
       <li><a href="/index.html">Home</a></li>
       <li><a href="/about.html">About</a></li>
-      <li><a href="/explore/">Explore</a></li>
+      <li><a href="/explore/" class="nav-active">Explore</a></li>
       <li class="nav-item--has-dropdown">
         <a href="/social.html">Socials</a>
         <div class="nav-dropdown">
@@ -55,54 +52,30 @@
 
 <main>
   <div class="container">
-    <h1>About</h1>
-
-    <p>
-      I'm a science teacher and earth systems scientist based in Oakland, CA.
-      I'm interested in people and places and the systems that connect us across
-      scales, from leaf to landscape. When I'm not in a classroom you'll generally
-      find me running the local trails and monkeying around the climbing gym.
-</p>
-    <p>
-      Earlier in my career I worked at the intersection of science, policy, and
-      communications: building data visualizations for climate research
-      organizations, doing field ecology in the desert Southwest and Hawai'i,
-      and modeling carbon offset projects. That mix of science, storytelling,
-      and design still shapes how I teach.
+    <h1>Explore</h1>
+    <p class="explore-lede">
+      Constructed pieces — tools, visualizations, and interactive things I've built or found
+      worth dwelling on. Each entry has a making-of note and something you can use or poke at.
     </p>
 
-    <h2>Skills</h2>
-    <ul class="skills-grid">
-      <li>Science education &amp; curriculum</li>
-      <li>Data visualization &amp; D3.js</li>
-      <li>GIS &amp; remote sensing</li>
-      <li>Science communication</li>
-      <li>Research ecology</li>
-      <li>Climate &amp; energy policy</li>
-      <li>Knowledge management</li>
-      <li>Freelance design</li>
-      <li>Carbon accounting</li>
-      <li>Field &amp; lab methods</li>
+    <ul class="explore-entry-list">
+
+      <li class="explore-entry">
+        <a class="explore-entry-title" href="/explore/dinner-tracker.html">The Dinner Tracker</a>
+        <span class="explore-date">Jun 2026</span>
+        <div class="explore-entry-meta">
+          <span class="type-badge type-badge--tool">Tool</span>
+          <span style="color:var(--color-text-muted);font-size:0.82rem;">Recipe library · grocery list · pantry matcher · cloud sync</span>
+        </div>
+        <p class="explore-entry-desc">
+          A meal planner for a wheat-free, dairy-free, pescatarian household — built entirely
+          through conversation with Claude. It tracks upcoming dinners, aggregates a grocery list
+          from the plan, and suggests what to make from whatever's in the fridge. A case study
+          in vibe coding.
+        </p>
+      </li>
+
     </ul>
-
-    <h2>Experience</h2>
-    <p style="font-size:0.88rem; color:var(--color-text-muted);">
-      Click any role to expand details. Color indicates career area.
-    </p>
-
-    <!-- Legend and D3-powered timeline injected here -->
-    <div id="timeline-legend" class="timeline-legend"></div>
-    <div id="career-timeline" class="d3-timeline"></div>
-
-    <h2>Elsewhere</h2>
-    <p>
-      <a href="https://github.com/timvarga" target="_blank" rel="noopener">GitHub</a> ·
-      <a href="https://bsky.app/profile/tvargs.bsky.social" target="_blank" rel="noopener">Bluesky</a> ·
-      <a href="https://x.com/tvargs" target="_blank" rel="noopener">Twitter/X</a> ·
-      <a href="https://www.flickr.com/photos/timvarga/" target="_blank" rel="noopener">Flickr</a> ·
-      <a href="https://www.pinterest.com/timvarga/" target="_blank" rel="noopener">Pinterest</a> ·
-      <a href="/social.html">All social profiles &rarr;</a>
-    </p>
   </div>
 </main>
 
@@ -112,22 +85,7 @@
   </div>
 </footer>
 
-<!-- D3 v7 (open-source, via cdnjs) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <script src="/assets/js/main.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="/assets/js/timeline.js"></script>
-<script src="/assets/js/maps.js"></script>
 <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
-<div id="townsquare-root"></div>
-<script type="module">
-  import { mountTownSquare } from "https://townsquare.cauenapier.com/townsquare.mjs";
-  mountTownSquare(document.getElementById("townsquare-root"), {
-    serverOrigin: "https://townsquare.cauenapier.com",
-    siteKey: "site_FatlVP8rmZ0S8j8W",
-    scene: {"benches":2,"benchXs":[0.2,0.72],"trees":6,"treeXs":[0.8,0.58,0.36,0.9,0.18,0.68],"lamps":1,"lampXs":[0.12],"birds":1},
-    theme: "host"
-  });
-</script>
 </body>
 </html>

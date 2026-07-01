@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Dinner Tracker — Live View</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<style>
+  :root{
+    --green:#1b3a2b; --green-light:#2d5240; --cream:#f3f3ec; --brown:#7a3b12;
+    --bg:#fafaf6; --card:#ffffff; --border:#dcdcd2; --text:#262622; --muted:#6b6b62;
+    --urgent:#b3441f; --soon:#b8860b; --fine:#3b7a4a;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);}
+
+  /* Status banner */
+  #sync-bar{
+    background:var(--green);color:#fff;text-align:center;
+    padding:6px 14px;font-size:11.5px;letter-spacing:.02em;
+    display:flex;align-items:center;justify-content:center;gap:7px;
+  }
+  #sync-bar .dot{
+    width:7px;height:7px;border-radius:50%;background:#52c58a;
+    flex-shrink:0;
+  }
+  #sync-bar.offline{background:#5a5550;}
+  #sync-bar.offline .dot{background:#aaa;}
+
+  header{background:var(--green);color:#fff;padding:12px 18px;}
+  header h1{font-size:17px;margin:0;font-weight:700;}
+  header .sub{font-size:11px;opacity:.75;margin-top:2px;}
+  nav{display:flex;background:var(--green-light);overflow-x:auto;}
+  nav button{flex:1;min-width:100px;background:none;border:none;color:#fff;opacity:.75;padding:10px 8px;font-size:12.5px;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;}
+  nav button.active{opacity:1;border-bottom-color:#e8c468;font-weight:600;}
+  main{max-width:980px;margin:0 auto;padding:14px 14px 50px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:12px;}
+  .panel-title{font-size:15px;font-weight:700;color:var(--green);margin:4px 0 10px;}
+  .meal-row{display:flex;gap:12px;align-items:flex-start;}
+  .meal-date{min-width:60px;text-align:center;}
+  .meal-date .d{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;}
+  .meal-date .n{font-size:20px;font-weight:700;color:var(--green);}
+  .meal-body{flex:1;}
+  .meal-title{font-weight:700;font-size:14px;color:var(--text);}
+  .badge{display:inline-block;font-size:10.5px;padding:2px 7px;border-radius:20px;font-weight:600;margin-left:6px;vertical-align:middle;}
+  .badge.urgent{background:#fbe3da;color:var(--urgent);}
+  .badge.soon{background:#fbf0d4;color:var(--soon);}
+  .badge.fine{background:#dff0e1;color:var(--fine);}
+  .badge.cooked{background:#e2e2da;color:var(--muted);}
+  .meal-meta{font-size:12px;color:var(--muted);margin-top:2px;}
+  .meal-note{font-size:12.5px;color:var(--brown);margin-top:5px;background:#fbf4ec;border-radius:6px;padding:6px 9px;}
+  details{margin-top:8px;}
+  summary{cursor:pointer;font-size:12.5px;color:var(--green);font-weight:600;}
+  .ing-list{margin:8px 0 0;padding-left:18px;font-size:13px;}
+  .ing-list li{margin-bottom:2px;}
+  .ing-list li.type-protein{color:#6b2d2d;}
+  .ing-list li.type-legume{color:#5a4317;}
+  .steps{margin:8px 0 0;padding-left:18px;font-size:13px;}
+  .steps li{margin-bottom:5px;line-height:1.4;}
+  .tag{display:inline-block;font-size:10.5px;background:var(--cream);color:var(--green);border-radius:5px;padding:2px 7px;margin:0 4px 4px 0;}
+  .recipe-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;}
+  .recipe-card h3{font-size:14px;margin:0 0 4px;color:var(--green);}
+  .search-bar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+  .search-bar input{flex:1;min-width:160px;}
+  input[type=text]{font-size:13px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;width:100%;font-family:inherit;}
+  .pill-toggle{display:inline-flex;border:1px solid var(--border);border-radius:7px;overflow:hidden;margin-bottom:10px;}
+  .pill-toggle button{border:none;background:#fff;padding:6px 12px;font-size:12px;cursor:pointer;}
+  .pill-toggle button.active{background:var(--green);color:#fff;}
+  .ing-chip-grid{display:flex;flex-wrap:wrap;gap:6px;max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px;margin-top:6px;}
+  .ing-chip{font-size:12px;padding:4px 9px;border-radius:20px;border:1px solid var(--border);background:#fff;cursor:pointer;user-select:none;}
+  .ing-chip.on{background:var(--green);color:#fff;border-color:var(--green);}
+  .match-bar{height:6px;border-radius:4px;background:var(--cream);overflow:hidden;margin-top:6px;}
+  .match-fill{height:100%;background:var(--fine);}
+  .empty{color:var(--muted);font-size:13px;text-align:center;padding:30px 10px;}
+  .footer-note{font-size:11px;color:var(--muted);text-align:center;margin-top:24px;}
+  label{font-size:12px;color:var(--muted);display:block;margin:8px 0 3px;}
+</style>
+</head>
+<body>
+
+<div id="sync-bar" class="offline">
+  <span class="dot"></span>
+  <span id="sync-msg">Connecting to live data…</span>
+</div>
+
+<header>
+  <h1>🍽 Dinner Tracker</h1>
+  <div class="sub">Wheat-free · dairy-free · pescatarian — read-only live view</div>
+</header>
+
+<nav id="tabs"></nav>
+<main id="app"><div class="empty">Loading…</div></main>
+
+<script>
+const SEED_RECIPES = [
+{id:"r1", title:"Seared Salmon, Quinoa & Roasted Broccoli with Lemon-Dill", servings:2,
+ cuisine:"American", method:"Stovetop + oven", activeMin:20, totalMin:30,
+ dietary:["wheat-free","dairy-free","pescatarian"], leftoverFriendly:true, repeatOf:null, source:null,
+ ingredients:[
+  {name:"Salmon fillets", qty:"2 (6oz ea)", type:"protein", frozen:true},
+  {name:"Quinoa", qty:"2/3 cup dry", type:"grain"},
+  {name:"Broccoli florets", qty:"3 cups (~1 med-lg head)", type:"vegetable"},
+  {name:"Olive oil", qty:"3 tbsp total", type:"condiment"},
+  {name:"Lemon", qty:"1", type:"fruit"},
+  {name:"Fresh dill", qty:"2 tbsp chopped", type:"condiment"},
+  {name:"Garlic", qty:"2 cloves", type:"vegetable"},
+  {name:"Salt & pepper", qty:"to taste", type:"condiment"},
+ ],
+ steps:[
+  "Preheat the oven to 425°F (5 min).",
+  "Rinse quinoa, combine with water 2:1, bring to a boil, then cover and simmer until tender (about 15 min).",
+  "Toss broccoli with 1 tbsp oil and a pinch of salt; roast on a sheet pan until crisp-edged (15–18 min).",
+  "Pat salmon dry, season, and sear skin-down in 1 tbsp oil over medium-high (about 4 min).",
+  "Flip and cook until just opaque (3–4 min more).",
+  "Whisk remaining oil, lemon juice, dill, and minced garlic (about 1 min).",
+  "Plate quinoa, broccoli, and salmon; drizzle with the lemon-dill sauce."
+ ]},
+{id:"r2", title:"Mahi Mahi Tacos with Cabbage Slaw & Pickled Onion", servings:3,
+ cuisine:"Mexican-inspired", method:"Stovetop", activeMin:25, totalMin:30,
+ dietary:["wheat-free","dairy-free","pescatarian"], leftoverFriendly:true, repeatOf:null, source:null,
+ ingredients:[
+  {name:"Mahi mahi", qty:"3 fillets (~5oz ea)", type:"protein", frozen:true},
+  {name:"Corn tortillas (GF)", qty:"8–9", type:"grain"},
+  {name:"Green cabbage", qty:"3 cups shredded (~½ small head)", type:"vegetable"},
+  {name:"Lime", qty:"2", type:"fruit"},
+  {name:"Cilantro", qty:"½ bunch", type:"vegetable"},
+  {name:"Avocado", qty:"2", type:"fruit"},
+  {name:"Red onion", qty:"1 small (for pickling)", type:"vegetable"},
+  {name:"Rice vinegar", qty:"¼ cup", type:"condiment"},
+  {name:"Chili powder", qty:"1½ tsp", type:"condiment"},
+  {name:"Cumin", qty:"1½ tsp", type:"condiment"},
+  {name:"Garlic powder", qty:"1 tsp", type:"condiment"},
+  {name:"Olive oil", qty:"1 tbsp", type:"condiment"},
+ ],
+ steps:[
+  "Thinly slice red onion and combine with rice vinegar and a pinch of salt; let pickle at least 15 min.",
+  "Pat mahi mahi dry and season both sides with chili powder, cumin, and garlic powder.",
+  "Sear in oil over medium-high, 3–4 min per side, until it flakes easily; break into chunks.",
+  "While fish cooks, toss shredded cabbage with lime juice, salt, and cilantro for slaw (about 2 min).",
+  "Warm tortillas (about 30 sec per side).",
+  "Assemble tacos with mahi, slaw, avocado, and pickled onion."
+ ]},
+{id:"r3", title:"Tofu & Chickpea Coconut Curry, Jasmine Rice, Cauliflower & Peppers", servings:3,
+ cuisine:"Indian-inspired", method:"Stovetop", activeMin:20, totalMin:30,
+ dietary:["wheat-free","dairy-free","pescatarian"], leftoverFriendly:true, repeatOf:null, source:null,
+ ingredients:[
+  {name:"Firm tofu", qty:"14oz block, pressed & cubed", type:"protein"},
+  {name:"Chickpeas", qty:"1½ cups (1 can)", type:"legume"},
+  {name:"Cauliflower florets", qty:"3 cups (~1 small head)", type:"vegetable"},
+  {name:"Bell peppers", qty:"2, sliced", type:"vegetable"},
+  {name:"Jasmine rice", qty:"1 cup dry", type:"grain"},
+  {name:"Coconut milk", qty:"1½ cups", type:"condiment"},
+  {name:"Curry powder/paste", qty:"2 tbsp", type:"condiment"},
+  {name:"Onion", qty:"1 medium, diced", type:"vegetable"},
+  {name:"Garlic", qty:"3 cloves", type:"vegetable"},
+  {name:"Ginger", qty:"1½ tsp grated", type:"vegetable"},
+  {name:"Baby spinach", qty:"1 cup (optional)", type:"vegetable"},
+ ],
+ steps:[
+  "Cook jasmine rice per package directions (15–18 min).",
+  "Sauté onion, garlic, and ginger in oil over medium heat until softened (3–4 min).",
+  "Stir in curry powder, toast until fragrant (1 min).",
+  "Pour in coconut milk, bring to a gentle simmer (2 min).",
+  "Add cauliflower, peppers, and chickpeas; simmer until cauliflower is just tender (8 min).",
+  "Fold in tofu (and spinach, if using); simmer to heat through (5 min more).",
+  "Season with salt and lime; serve over rice."
+ ]},
+{id:"r4", title:"Beyond Sausage & Pepper Skillet, Sushi Rice & Kimchi", servings:2,
+ cuisine:"American", method:"Stovetop", activeMin:20, totalMin:25,
+ dietary:["wheat-free","dairy-free","pescatarian"], leftoverFriendly:true, repeatOf:null, source:null,
+ ingredients:[
+  {name:"Beyond Sausage", qty:"2 links, sliced", type:"protein"},
+  {name:"Bell peppers", qty:"2, sliced", type:"vegetable"},
+  {name:"Onion", qty:"½ medium, sliced", type:"vegetable"},
+  {name:"Sushi rice", qty:"2/3 cup dry", type:"grain"},
+  {name:"Kimchi", qty:"2/3 cup", type:"fermented"},
+  {name:"Garlic", qty:"2 cloves", type:"vegetable"},
+  {name:"Smoked paprika", qty:"1 tsp", type:"condiment"},
+  {name:"GF tamari", qty:"1 tbsp", type:"condiment"},
+ ],
+ steps:[
+  "Cook sushi rice per package directions (about 20 min).",
+  "Heat oil in a skillet over medium-high; brown sliced sausage (3–4 min per side), then remove.",
+  "Sauté peppers, onion, garlic, and smoked paprika until tender-crisp (about 5 min).",
+  "Return sausage to the pan, splash in tamari, toss to coat (1 min).",
+  "Serve over rice, topped with kimchi."
+ ]},
+{id:"r5", title:"Slow Cooker Red Lentil & Pumpkin Soup", servings:2,
+ cuisine:"Fusion", method:"Slow cooker", activeMin:10, totalMin:240,
+ dietary:["wheat-free","dairy-free","pescatarian"], leftoverFriendly:true, repeatOf:null,
+ source:"Inspired by NYT Cooking's slow cooker red lentil & pumpkin soup",
+ ingredients:[
+  {name:"Red lentils", qty:"1 cup dry, rinsed", type:"legume"},
+  {name:"Canned pumpkin puree", qty:"1 can (15oz)", type:"vegetable"},
+  {name:"Vegetable broth", qty:"3 cups", type:"condiment"},
+  {name:"Coconut milk", qty:"2/3 cup", type:"condiment"},
+  {name:"Onion", qty:"½, diced", type:"vegetable"},
+  {name:"Garlic", qty:"2 cloves", type:"vegetable"},
+  {name:"Ginger", qty:"1 tsp grated", type:"vegetable"},
+  {name:"Curry powder", qty:"1½ tsp", type:"condiment"},
+  {name:"Cumin", qty:"1 tsp", type:"condiment"},
+  {name:"Lime", qty:"1", type:"fruit"},
+  {name:"Cilantro", qty:"small handful", type:"vegetable"},
+ ],
+ steps:[
+  "Combine lentils, pumpkin, broth, onion, garlic, ginger, curry powder & cumin in the slow cooker.",
+  "Cook on low 6–7 hrs or high 3–4 hrs until lentils are fully tender.",
+  "Stir in coconut milk, season with salt.",
+  "Finish with a squeeze of lime; blend about half for a creamier texture if desired.",
+  "Garnish with cilantro."
+ ]},
+{id:"r6", title:"Miso-Glazed Salmon, Brown Rice, Bok Choy & Snap Peas", servings:2,
+ cuisine:"Japanese-inspired", method:"Oven + stovetop", activeMin:20, totalMin:45,
+ dietary:["wheat-free","dairy-free","pescatarian"], leftoverFriendly:true, repeatOf:null, source:null,
+ ingredients:[
+  {name:"Salmon fillets", qty:"2 (6oz ea)", type:"protein", frozen:true},
+  {name:"GF rice miso", qty:"2 tbsp", type:"condiment"},
+  {name:"Mirin", qty:"1 tbsp", type:"condiment"},
+  {name:"GF tamari", qty:"1 tbsp", type:"condiment"},
+  {name:"Maple syrup", qty:"1 tsp", type:"condiment"},
+  {name:"Brown rice", qty:"2/3 cup dry", type:"grain"},
+  {name:"Baby bok choy", qty:"2 heads, halved", type:"vegetable"},
+  {name:"Snap peas", qty:"1 cup", type:"vegetable"},
+  {name:"Sesame oil", qty:"1 tbsp", type:"condiment"},
+  {name:"Garlic", qty:"2 cloves", type:"vegetable"},
+ ],
+ steps:[
+  "Start the brown rice first (35–40 min).",
+  "Whisk miso, mirin, tamari, and maple syrup; coat salmon and marinate (10 min).",
+  "Preheat oven/broiler to 400°F; bake or broil salmon, basting once, until just cooked through (10–12 min).",
+  "Sauté bok choy, snap peas, and garlic in sesame oil until crisp-tender (4–5 min).",
+  "Plate together."
+ ]},
+{id:"r7", title:"Shrimp & GF Pasta Puttanesca with Arugula Salad", servings:2,
+ cuisine:"Italian-inspired", method:"Stovetop", activeMin:20, totalMin:25,
+ dietary:["wheat-free","dairy-free","pescatarian"], leftoverFriendly:true, repeatOf:null, source:null,
+ ingredients:[
+  {name:"Shrimp", qty:"10oz, peeled & deveined", type:"protein"},
+  {name:"GF pasta", qty:"6oz", type:"grain"},
+  {name:"Cherry tomatoes", qty:"1 cup", type:"vegetable"},
+  {name:"Capers", qty:"2 tbsp", type:"condiment"},
+  {name:"GF olives", qty:"¼ cup, sliced", type:"condiment"},
+  {name:"Garlic", qty:"2 cloves", type:"vegetable"},
+  {name:"Chili flakes", qty:"½ tsp", type:"condiment"},
+  {name:"Olive oil", qty:"2 tbsp", type:"condiment"},
+  {name:"Arugula", qty:"2 cups", type:"vegetable"},
+  {name:"Lemon", qty:"1", type:"fruit"},
+ ],
+ steps:[
+  "Bring water to a boil; cook GF pasta per package directions (8–10 min).",
+  "Sauté garlic & chili flakes in oil until fragrant (1 min).",
+  "Add tomatoes, capers, olives; simmer until tomatoes break down slightly (8 min).",
+  "Add shrimp; cook until pink and opaque (3–4 min).",
+  "Drain pasta, toss into skillet to coat (1 min).",
+  "Dress arugula with lemon and olive oil; serve alongside."
+ ]},
+{id:"r8", title:"White Bean & Kale Stew with GF Bread & Sauerkraut", servings:2,
+ cuisine:"Mediterranean", method:"Stovetop", activeMin:15, totalMin:25,
+ dietary:["wheat-free","dairy-free","pescatarian"], leftoverFriendly:true, repeatOf:null, source:null,
+ ingredients:[
+  {name:"White beans (cannellini)", qty:"2 cups (~1½ cans)", type:"legume"},
+  {name:"Kale", qty:"3 cups chopped", type:"vegetable"},
+  {name:"Diced tomato", qty:"1 cup", type:"vegetable"},
+  {name:"Carrot", qty:"1, diced", type:"vegetable"},
+  {name:"Celery", qty:"1 stalk, diced", type:"vegetable"},
+  {name:"Onion", qty:"½ medium, diced", type:"vegetable"},
+  {name:"Garlic", qty:"2 cloves", type:"vegetable"},
+  {name:"Vegetable broth", qty:"2 cups", type:"condiment"},
+  {name:"Rosemary or thyme", qty:"1 tsp", type:"condiment"},
+  {name:"Sauerkraut", qty:"¼ cup", type:"fermented"},
+ ],
+ steps:[
+  "Sauté onion, carrot, celery, and garlic in oil until softened (5 min).",
+  "Add broth, tomato, herbs, and beans; simmer to let flavors meld (15 min).",
+  "Stir in kale; cook until wilted (5 min).",
+  "Season with salt & pepper.",
+  "Serve with toasted GF bread and a side of sauerkraut."
+ ]},
+{id:"r9", title:"Tofu Banh Mi Bowls", servings:2,
+ cuisine:"Vietnamese-inspired", method:"Stovetop", activeMin:20, totalMin:25,
+ dietary:["wheat-free","dairy-free","pescatarian"], leftoverFriendly:true, repeatOf:null, source:null,
+ ingredients:[
+  {name:"Firm tofu", qty:"10oz, pressed & cubed", type:"protein"},
+  {name:"Jasmine/sushi rice", qty:"2/3 cup dry", type:"grain"},
+  {name:"Carrot", qty:"1 large, julienned", type:"vegetable"},
+  {name:"Cucumber", qty:"1, julienned", type:"vegetable"},
+  {name:"Rice vinegar", qty:"¼ cup + sugar 1 tbsp + salt", type:"condiment"},
+  {name:"Cilantro & mint", qty:"small handful ea", type:"vegetable"},
+  {name:"GF tamari", qty:"2 tbsp", type:"condiment"},
+  {name:"Garlic", qty:"2 cloves", type:"vegetable"},
+  {name:"Lime", qty:"1", type:"fruit"},
+ ],
+ steps:[
+  "Cook rice per package directions (15–20 min).",
+  "Combine julienned carrot & cucumber with rice vinegar, sugar, and salt; quick-pickle (at least 10 min).",
+  "Toss tofu with tamari and minced garlic; marinate (10 min).",
+  "Pan-fry tofu over medium-high until crisp on most sides (6–8 min).",
+  "Assemble bowls with rice, tofu, pickled vegetables, herbs, and lime."
+ ]},
+{id:"r10", title:"Blackened Mahi Mahi, Mango-Black Bean Salsa, Coconut Rice & Grilled Corn", servings:3,
+ cuisine:"Caribbean-inspired", method:"Stovetop + grill", activeMin:25, totalMin:30,
+ dietary:["wheat-free","dairy-free","pescatarian"], leftoverFriendly:true, repeatOf:null, source:null,
+ ingredients:[
+  {name:"Mahi mahi", qty:"3 fillets (~5–6oz ea)", type:"protein", frozen:true},
+  {name:"Blackening spice", qty:"to taste", type:"condiment"},
+  {name:"Jasmine rice", qty:"1 cup dry", type:"grain"},
+  {name:"Coconut milk", qty:"¾ cup", type:"condiment"},
+  {name:"Corn", qty:"3 ears", type:"vegetable"},
+  {name:"Mango", qty:"2, diced", type:"fruit"},
+  {name:"Black beans", qty:"¾ cup", type:"legume"},
+  {name:"Lime", qty:"2", type:"fruit"},
+  {name:"Red onion", qty:"½, diced", type:"vegetable"},
+  {name:"Cilantro", qty:"handful", type:"vegetable"},
+ ],
+ steps:[
+  "Cook rice in a coconut milk and water blend per package directions (15–18 min).",
+  "Grill or char corn, turning occasionally (8–10 min).",
+  "Mix mango, black beans, red onion, cilantro, and lime for salsa (3 min).",
+  "Coat mahi in blackening spice; sear in a hot skillet (3–4 min per side).",
+  "Plate rice, mahi, salsa, and corn."
+ ]},
+{id:"r11", title:"Chickpea & Spinach Curry (Chana Masala), Brown Rice, Kachumber Salad", servings:3,
+ cuisine:"Indian", method:"Stovetop", activeMin:20, totalMin:45,
+ dietary:["wheat-free","dairy-free","pescatarian"], leftoverFriendly:true, repeatOf:null, source:null,
+ ingredients:[
+  {name:"Chickpeas", qty:"3 cups (2 cans)", type:"legume"},
+  {name:"Baby spinach", qty:"6 cups", type:"vegetable"},
+  {name:"Onion", qty:"1 large, diced", type:"vegetable"},
+  {name:"Garlic", qty:"4 cloves", type:"vegetable"},
+  {name:"Ginger", qty:"1½ tsp grated", type:"vegetable"},
+  {name:"Diced tomato", qty:"1½ cups (1 can)", type:"vegetable"},
+  {name:"Garam masala", qty:"1½ tsp", type:"condiment"},
+  {name:"Cumin", qty:"1 tsp", type:"condiment"},
+  {name:"Turmeric", qty:"1 tsp", type:"condiment"},
+  {name:"Brown rice", qty:"1 cup dry", type:"grain"},
+ ],
+ steps:[
+  "Start the brown rice first (35–40 min).",
+  "Sauté onion, garlic, ginger, and spices until fragrant and onion softens (4–5 min).",
+  "Add tomato, cook down (5 min).",
+  "Stir in chickpeas and a splash of water; simmer (12 min).",
+  "Fold in spinach; cook until just wilted (2 min).",
+  "Serve curry over rice with kachumber salad."
+ ]},
+{id:"r20", title:"Sheet-Pan Shrimp Boil with Roasted Potatoes & Broiled Corn", servings:5,
+ cuisine:"American", method:"Oven (roast + broil)", activeMin:20, totalMin:45,
+ dietary:["wheat-free","dairy-free","pescatarian"], leftoverFriendly:true, repeatOf:null,
+ source:"Butter swapped for dairy-free butter.",
+ ingredients:[
+  {name:"Baby potatoes", qty:"1 lb, halved", type:"vegetable"},
+  {name:"Olive oil", qty:"4 tbsp", type:"condiment"},
+  {name:"Garlic", qty:"4 cloves, minced", type:"vegetable"},
+  {name:"Corn", qty:"4 ears, cut into segments", type:"vegetable"},
+  {name:"Dairy-free butter", qty:"2 tbsp", type:"condiment"},
+  {name:"Seafood/Cajun seasoning", qty:"1 tsp", type:"condiment"},
+  {name:"Jumbo shrimp", qty:"2 lb, peeled & deveined", type:"protein"},
+  {name:"Lemon", qty:"1", type:"fruit"},
+ ],
+ steps:[
+  "Heat oven to 425°F. Toss potatoes with 2 tbsp oil and half the garlic; roast until golden (about 20 min).",
+  "Spread corn with dairy-free butter.",
+  "Whisk remaining oil, lemon juice, garlic & seasoning; toss with shrimp.",
+  "Switch to broil. Add corn over potatoes; broil until kernels brown slightly (3–4 min).",
+  "Scatter shrimp over pan; broil until pink and curled (2 min per side).",
+  "Squeeze warm lemon over everything. Serve immediately."
+ ]},
+{id:"r21", title:"Crispy Tofu Salad with Beets, Quinoa & Lemon-Tahini Dressing", servings:2,
+ cuisine:"Mediterranean", method:"Stovetop", activeMin:20, totalMin:30,
+ dietary:["wheat-free","dairy-free","pescatarian"], leftoverFriendly:false, repeatOf:null, source:null,
+ ingredients:[
+  {name:"Firm tofu", qty:"14oz, pressed and cubed", type:"protein"},
+  {name:"Salad mix / mixed greens", qty:"4 cups", type:"vegetable"},
+  {name:"Pre-cooked beets", qty:"1 cup, diced", type:"vegetable"},
+  {name:"Quinoa", qty:"⅓ cup dry", type:"grain"},
+  {name:"Tahini", qty:"3 tbsp", type:"condiment"},
+  {name:"Lemon", qty:"1 large", type:"fruit"},
+  {name:"Garlic", qty:"1 clove, minced", type:"vegetable"},
+  {name:"Maple syrup", qty:"1 tsp", type:"condiment"},
+  {name:"Olive oil", qty:"1 tbsp", type:"condiment"},
+ ],
+ steps:[
+  "Cook quinoa (⅓ cup with ⅔ cup water, simmer 15 min). Fluff and set aside.",
+  "Press and cube tofu; pat dry.",
+  "Sear tofu in olive oil over medium-high until golden and crispy on most sides (8–10 min). Season with salt.",
+  "Whisk tahini, lemon juice, garlic, maple syrup, and 2–3 tbsp water until smooth.",
+  "Divide salad mix between bowls. Top with quinoa, tofu, and beets.",
+  "Drizzle generously with dressing."
+ ]},
+];
+
+const SEED_LOG = [
+  {id:"l1", recipeId:"r1",  date:"2026-06-23", headcount:2, status:"cooked",  note:""},
+  {id:"l2", recipeId:"r5",  date:"2026-06-27", headcount:2, status:"cooked",  note:""},
+  {id:"l3", recipeId:"r20", date:"2026-06-28", headcount:2, status:"planned",
+   note:"Added for tonight. Built dairy-free (plant-based butter swap for the corn). Recipe yields 4–6 — with 2 eating, the rest is a ready-made lunch or dinner tomorrow."},
+  {id:"l4", recipeId:"r21", date:"2026-06-30", headcount:2, status:"planned",
+   note:"Using up the salad mix tonight."},
+  {id:"l5", recipeId:"r2",  date:"2026-07-01", headcount:2, status:"planned",
+   note:"Mahi mahi comes frozen from Costco, so there's no rush on the fish itself. Cook all 3 fillets even though only 2 are eating; extra makes a great next-day lunch."},
+  {id:"l6", recipeId:"r3",  date:"2026-07-02", headcount:3, status:"planned",
+   note:"Bumped up a day — the bell peppers are starting to go soft, so let's use them while they're still good."},
+  {id:"l7", recipeId:"r7",  date:"2026-07-03", headcount:2, status:"planned",
+   note:"Pushed back a day since shrimp was already on the menu last night. Shrimp is still the most perishable thing in the fridge, so don't push this much further without freezing it."},
+  {id:"l8", recipeId:"r4",  date:"2026-07-04", headcount:3, status:"planned",
+   note:"Least perishable of the leftovers, so it's last."},
+  {id:"l9", recipeId:"r8",  date:"2026-07-05", headcount:3, status:"planned",
+   note:"Recipe is written for 2 — scale up by about 1.5x."},
+  {id:"l10", recipeId:"r9", date:"2026-07-06", headcount:3, status:"planned", note:""},
+  {id:"l11", recipeId:"r10",date:"2026-07-07", headcount:3, status:"planned", note:""},
+  {id:"l12", recipeId:"r11",date:"2026-07-08", headcount:3, status:"planned", note:""},
+];
+
+const TYPE_LABELS = {protein:"Protein", legume:"Legume/Bean", vegetable:"Vegetable", fruit:"Fruit",
+  grain:"Grain", condiment:"Condiment/Spice", fermented:"Fermented", other:"Other"};
+
+let state = {
+  recipes: JSON.parse(JSON.stringify(SEED_RECIPES)),
+  log: JSON.parse(JSON.stringify(SEED_LOG)),
+};
+let activeTab = "upcoming";
+let pantrySelection = new Set();
+let pantryFilter = "";
+let libraryFilter = "";
+let matchMode = "overlap";
+let groceryDays = 7;
+let groceryChecked = new Set();
+
+const TABS = [
+  {id:"upcoming",     label:"Tonight & Upcoming"},
+  {id:"grocerylist",  label:"Grocery List"},
+  {id:"library",      label:"Recipe Library"},
+  {id:"whatcanimake", label:"What Can I Make?"},
+  {id:"history",      label:"History"},
+];
+
+function recipeById(id){ return state.recipes.find(r => r.id === id); }
+function fmtDate(iso){
+  const d = new Date(iso + "T00:00:00");
+  return d.toLocaleDateString("en-US",{weekday:"short", month:"short", day:"numeric"});
+}
+function daysFromToday(iso){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = new Date(iso + "T00:00:00");
+  return Math.round((d - today) / 86400000);
+}
+function urgencyBadge(diff){
+  if (diff <= 0) return '<span class="badge urgent">Today</span>';
+  if (diff === 1) return '<span class="badge soon">Tomorrow</span>';
+  if (diff <= 3) return '<span class="badge soon">In '+diff+' days</span>';
+  return '<span class="badge fine">In '+diff+' days</span>';
+}
+
+function renderNav(){
+  const nav = document.getElementById("tabs");
+  nav.innerHTML = TABS.map(t =>
+    `<button class="${t.id===activeTab?'active':''}" onclick="setTab('${t.id}')">${t.label}</button>`
+  ).join("");
+}
+function setTab(id){ activeTab = id; render(); }
+
+function renderIngredientsAndSteps(r){
+  const ing = r.ingredients.map(i =>
+    `<li class="type-${i.type}">${i.name} – ${i.qty}${i.frozen ? ' <span style="font-size:10px;background:#ddeeff;color:#1a6090;border-radius:3px;padding:1px 4px;margin-left:3px;">❄ frozen</span>' : ''}</li>`).join("");
+  const steps = r.steps.map(s => `<li>${s}</li>`).join("");
+  return `<ul class="ing-list">${ing}</ul><ol class="steps">${steps}</ol>`;
+}
+
+function renderUpcoming(){
+  const entries = state.log.filter(l => l.status !== "cooked" && l.status !== "skipped")
+    .sort((a,b) => a.date.localeCompare(b.date));
+  const cookedRecently = state.log.filter(l => l.status === "cooked")
+    .sort((a,b) => b.date.localeCompare(a.date)).slice(0,3);
+
+  let html = `<div class="panel-title">Upcoming dinners</div>`;
+  if (entries.length === 0){
+    html += `<div class="empty">Nothing scheduled.</div>`;
+  } else {
+    entries.forEach(l => {
+      const r = recipeById(l.recipeId);
+      if (!r) return;
+      const diff = daysFromToday(l.date);
+      const d = new Date(l.date + "T00:00:00");
+      const dayName = d.toLocaleDateString("en-US",{weekday:"short"});
+      const dayNum = d.getDate();
+      html += `<div class="card">
+        <div class="meal-row">
+          <div class="meal-date"><div class="d">${dayName}</div><div class="n">${dayNum}</div></div>
+          <div class="meal-body">
+            <div class="meal-title">${r.title}${urgencyBadge(diff)}</div>
+            <div class="meal-meta">Serves ${l.headcount} · ${r.cuisine} · ${r.method} · ~${r.totalMin} min</div>
+            ${l.note ? `<div class="meal-note">${l.note}</div>` : ""}
+            <details>
+              <summary>Ingredients & steps</summary>
+              ${renderIngredientsAndSteps(r)}
+            </details>
+          </div>
+        </div>
+      </div>`;
+    });
+  }
+  if (cookedRecently.length){
+    html += `<div class="panel-title" style="margin-top:18px;">Recently cooked</div>`;
+    cookedRecently.forEach(l => {
+      const r = recipeById(l.recipeId);
+      if (!r) return;
+      html += `<div class="card">
+        <div class="meal-row">
+          <div class="meal-date"><div class="d">${new Date(l.date+"T00:00:00").toLocaleDateString("en-US",{weekday:"short"})}</div><div class="n">${new Date(l.date+"T00:00:00").getDate()}</div></div>
+          <div class="meal-body">
+            <div class="meal-title">${r.title} <span class="badge cooked">Cooked</span></div>
+            <div class="meal-meta">Serves ${l.headcount} · ${r.cuisine}</div>
+            ${l.note ? `<div class="meal-note">${l.note}</div>` : ""}
+            <details><summary>Ingredients & steps</summary>${renderIngredientsAndSteps(r)}</details>
+          </div>
+        </div>
+      </div>`;
+    });
+  }
+  return html;
+}
+
+function renderLibrary(){
+  let html = `<div class="panel-title">Recipe Library (${state.recipes.length})</div>
+  <div class="search-bar">
+    <input type="text" placeholder="Search by title, ingredient, or cuisine…" value="${libraryFilter}"
+      oninput="libraryFilter=this.value; render()">
+  </div>
+  <div class="recipe-grid">`;
+
+  const q = libraryFilter.trim().toLowerCase();
+  const filtered = state.recipes.filter(r => {
+    if (!q) return true;
+    const hay = (r.title + " " + r.cuisine + " " + r.ingredients.map(i=>i.name).join(" ")).toLowerCase();
+    return hay.includes(q);
+  });
+
+  if (filtered.length === 0){
+    html += `</div><div class="empty">No recipes match "${libraryFilter}".</div>`;
+    return html;
+  }
+
+  filtered.forEach(r => {
+    html += `<div class="card recipe-card">
+      <h3>${r.title}</h3>
+      <div class="meal-meta">Serves ${r.servings} · ${r.cuisine} · ${r.method}</div>
+      <div class="meal-meta">Active ~${r.activeMin} min · Total ~${r.totalMin} min</div>
+      <div style="margin-top:6px;">
+        ${r.leftoverFriendly ? '<span class="tag">Leftover-friendly</span>' : ""}
+        ${r.source ? '<span class="tag">Has source</span>' : ""}
+      </div>
+      <details><summary>Ingredients & steps</summary>${renderIngredientsAndSteps(r)}</details>
+      ${r.source ? `<div class="meal-meta" style="margin-top:6px;">Source: ${r.source}</div>` : ""}
+    </div>`;
+  });
+  html += `</div>`;
+  return html;
+}
+
+function allIngredientNames(){
+  const set = new Map();
+  state.recipes.forEach(r => r.ingredients.forEach(i => {
+    const key = i.name.toLowerCase();
+    if (!set.has(key)) set.set(key, {name:i.name, type:i.type});
+  }));
+  return Array.from(set.values()).sort((a,b) => a.name.localeCompare(b.name));
+}
+
+function renderWhatCanIMake(){
+  const allIng = allIngredientNames();
+  const filtered = allIng.filter(i => i.name.toLowerCase().includes(pantryFilter.toLowerCase()));
+
+  let html = `<div class="panel-title">What can I make?</div>
+  <div class="card">
+    <label>Tap the ingredients you currently have on hand</label>
+    <input type="text" placeholder="Filter ingredient list…" value="${pantryFilter}"
+      oninput="pantryFilter=this.value; render()">
+    <div class="ing-chip-grid">
+      ${filtered.map(i => `<span class="ing-chip ${pantrySelection.has(i.name)?'on':''}"
+        onclick="togglePantry('${i.name.replace(/'/g,"\\'")}')">${i.name}</span>`).join("")}
+    </div>
+    <div class="pill-toggle" style="margin-top:12px;">
+      <button class="${matchMode==='overlap'?'active':''}" onclick="matchMode='overlap'; render()">Best overlap</button>
+      <button class="${matchMode==='strict'?'active':''}" onclick="matchMode='strict'; render()">Strict (have everything)</button>
+    </div>
+    <div class="meal-meta">${pantrySelection.size} ingredient(s) selected. <a href="#" onclick="pantrySelection.clear(); render(); return false;">Clear all</a></div>
+  </div>`;
+
+  if (pantrySelection.size === 0){
+    html += `<div class="empty">Select a few ingredients above to see matching recipes.</div>`;
+    return html;
+  }
+
+  const results = state.recipes.map(r => {
+    const total = r.ingredients.length;
+    const have = r.ingredients.filter(i => pantrySelection.has(i.name)).length;
+    return {r, have, total, pct: total ? have/total : 0};
+  }).filter(x => x.have > 0);
+
+  let shown = matchMode === "strict" ? results.filter(x => x.have === x.total) : results;
+  shown.sort((a,b) => b.pct - a.pct || b.have - a.have);
+
+  html += `<div class="panel-title" style="margin-top:16px;">Matching recipes</div>`;
+  if (shown.length === 0){
+    html += `<div class="empty">No recipes match those ingredients${matchMode==='strict' ? ' exactly' : ''}. Try selecting more, or switch to Best overlap.</div>`;
+  } else {
+    shown.forEach(({r, have, total, pct}) => {
+      html += `<div class="card recipe-card">
+        <h3>${r.title}</h3>
+        <div class="meal-meta">Uses ${have} of ${total} ingredients you have · Serves ${r.servings} · ${r.cuisine}</div>
+        <div class="match-bar"><div class="match-fill" style="width:${Math.round(pct*100)}%"></div></div>
+        <details><summary>Full ingredient list & steps</summary>${renderIngredientsAndSteps(r)}</details>
+      </div>`;
+    });
+  }
+  return html;
+}
+
+function togglePantry(name){
+  if (pantrySelection.has(name)) pantrySelection.delete(name);
+  else pantrySelection.add(name);
+  render();
+}
+
+function renderHistory(){
+  const cooked = state.log.filter(l => l.status === "cooked").sort((a,b) => b.date.localeCompare(a.date));
+  const skipped = state.log.filter(l => l.status === "skipped").sort((a,b) => b.date.localeCompare(a.date));
+  let html = `<div class="panel-title">Cooked (${cooked.length})</div>`;
+  if (cooked.length === 0) html += `<div class="empty">Nothing logged as cooked yet.</div>`;
+  cooked.forEach(l => {
+    const r = recipeById(l.recipeId);
+    if (!r) return;
+    html += `<div class="card">
+      <div class="meal-title">${fmtDate(l.date)} — ${r.title}</div>
+      <div class="meal-meta">Serves ${l.headcount} · ${r.cuisine}</div>
+      ${l.note ? `<div class="meal-note">${l.note}</div>` : ""}
+    </div>`;
+  });
+  if (skipped.length){
+    html += `<div class="panel-title" style="margin-top:16px;">Skipped / pushed back (${skipped.length})</div>`;
+    skipped.forEach(l => {
+      const r = recipeById(l.recipeId);
+      if (!r) return;
+      html += `<div class="card">
+        <div class="meal-title">${fmtDate(l.date)} — ${r.title}</div>
+        <div class="meal-meta">${r.cuisine}</div>
+      </div>`;
+    });
+  }
+  return html;
+}
+
+function renderGroceryList(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const upcoming = state.log
+    .filter(l => l.status === "planned" && new Date(l.date + "T00:00:00") >= today)
+    .sort((a,b) => a.date.localeCompare(b.date))
+    .slice(0, groceryDays);
+
+  if (upcoming.length === 0){
+    return `<div class="panel-title">Grocery List</div><div class="empty">No upcoming planned meals.</div>`;
+  }
+
+  const byType = {};
+  upcoming.forEach(l => {
+    const r = recipeById(l.recipeId);
+    if (!r) return;
+    r.ingredients.forEach((i, ingIdx) => {
+      const type = i.type || "other";
+      if (!byType[type]) byType[type] = [];
+      byType[type].push({name:i.name, qty:i.qty, frozen:!!i.frozen,
+        meal:r.title.split(",")[0], key:l.id+"_"+ingIdx});
+    });
+  });
+
+  const typeOrder = ["protein","vegetable","fruit","legume","grain","fermented","condiment","other"];
+
+  let html = `<div class="panel-title">Grocery List</div>
+  <div class="card">
+    <div style="font-size:12px;font-weight:600;color:var(--green);margin-bottom:8px;">Covering ${upcoming.length} meals:</div>
+    ${upcoming.map(l => {
+      const r = recipeById(l.recipeId);
+      const d = new Date(l.date+"T00:00:00");
+      const label = d.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
+      return `<div style="font-size:12.5px;color:var(--text);margin-bottom:3px;">📅 ${label} — ${r ? r.title.split(",")[0] : "?"}</div>`;
+    }).join("")}
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+      <button onclick="groceryDays=5; render()" style="font-size:12px;padding:5px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:${groceryDays===5?"var(--green)":"#fff"};color:${groceryDays===5?"#fff":"var(--text)"};">5 meals</button>
+      <button onclick="groceryDays=7; render()" style="font-size:12px;padding:5px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:${groceryDays===7?"var(--green)":"#fff"};color:${groceryDays===7?"#fff":"var(--text)"};">7 meals</button>
+      <button onclick="groceryChecked.clear(); render()" style="font-size:12px;padding:5px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:#fff;color:var(--muted);">Clear checks</button>
+    </div>
+  </div>`;
+
+  let totalItems = 0;
+  typeOrder.forEach(type => {
+    const items = byType[type];
+    if (!items || !items.length) return;
+    totalItems += items.length;
+    html += `<div class="card">
+      <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:6px;">${TYPE_LABELS[type]||type}</div>`;
+    items.forEach(item => {
+      const checked = groceryChecked.has(item.key);
+      const frozenTag = item.frozen
+        ? ` <span style="font-size:10px;background:#ddeeff;color:#1a6090;border-radius:4px;padding:1px 5px;margin-left:4px;">❄ frozen</span>` : "";
+      html += `<label style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;">
+        <input type="checkbox" ${checked?"checked":""} onchange="toggleGrocery('${item.key}')"
+          style="width:18px;height:18px;margin-top:1px;flex-shrink:0;accent-color:var(--green);">
+        <div style="flex:1;${checked?"opacity:0.4;text-decoration:line-through;":""}">
+          <span style="font-size:13.5px;">${item.name}${frozenTag}</span>
+          <span style="font-size:12px;color:var(--muted);margin-left:6px;">${item.qty}</span>
+          <div style="font-size:11px;color:var(--muted);margin-top:1px;">${item.meal}</div>
+        </div>
+      </label>`;
+    });
+    html += `</div>`;
+  });
+
+  html += `<div class="footer-note">${groceryChecked.size} of ${totalItems} items checked off · tap to mark what you already have</div>`;
+  return html;
+}
+
+function toggleGrocery(key){
+  if (groceryChecked.has(key)) groceryChecked.delete(key);
+  else groceryChecked.add(key);
+  render();
+}
+
+function render(){
+  renderNav();
+  const app = document.getElementById("app");
+  let body = "";
+  if (activeTab === "upcoming")     body = renderUpcoming();
+  if (activeTab === "grocerylist")  body = renderGroceryList();
+  if (activeTab === "library")      body = renderLibrary();
+  if (activeTab === "whatcanimake") body = renderWhatCanIMake();
+  if (activeTab === "history")      body = renderHistory();
+  app.innerHTML = body;
+}
+
+// Initial render from seed data
+render();
+</script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBDqSpm_KROvGwy43VnUUs0ZeEIqfynVbk",
+  authDomain: "timvarga-dinner-tracker.firebaseapp.com",
+  projectId: "timvarga-dinner-tracker",
+  storageBucket: "timvarga-dinner-tracker.firebasestorage.app",
+  messagingSenderId: "51796761695",
+  appId: "1:51796761695:web:21ff52ff3e5c8818618fea"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+const HOUSEHOLD_DOC = doc(db, "household", "shared");
+const syncBar = document.getElementById("sync-bar");
+const syncMsg = document.getElementById("sync-msg");
+
+onSnapshot(
+  HOUSEHOLD_DOC,
+  (snap) => {
+    if (snap.exists()) {
+      const data = snap.data();
+      if (data && data.recipes && data.log) {
+        state = data;
+        render();
+        syncBar.classList.remove("offline");
+        syncMsg.textContent = "Live · read-only";
+      }
+    }
+  },
+  (err) => {
+    console.log("Firestore read unavailable:", err.code, "— showing sample data.");
+    syncBar.classList.add("offline");
+    syncMsg.textContent = "Showing sample data · live sync unavailable";
+  }
+);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Background: dark forest green rounded square -->
+  <rect width="32" height="32" rx="7" fill="#1e3a1e"/>
+  <!-- Topographic contour rings — concentric ellipses, lighter toward the summit -->
+  <ellipse cx="16" cy="17.5" rx="12" ry="8.5" fill="#3a6b30"/>
+  <ellipse cx="16" cy="17"   rx="8.5" ry="5.8" fill="#57913f"/>
+  <ellipse cx="16" cy="16.5" rx="5.2" ry="3.5" fill="#78b55a"/>
+  <ellipse cx="16" cy="16"   rx="2.4" ry="1.6" fill="#a8d487"/>
+  <!-- Summit marker: warm ochre dot -->
+  <circle  cx="16" cy="15.5" r="1.1" fill="#c9a84c"/>
+</svg>

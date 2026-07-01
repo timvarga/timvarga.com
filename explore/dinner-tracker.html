@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Dinner Tracker — Tim Varga</title>
+<meta name="description" content="A meal planner for a wheat-free, dairy-free, pescatarian household — built through conversation with Claude. A case study in vibe coding.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://timvarga.com/explore/dinner-tracker.html">
+<meta property="og:title" content="The Dinner Tracker — Tim Varga">
+<meta property="og:description" content="A meal planner built entirely through conversation with Claude. A case study in vibe coding.">
+<meta property="og:image" content="https://timvarga.com/assets/img/hero-poster.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The Dinner Tracker — Tim Varga">
+<meta name="twitter:description" content="A meal planner built entirely through conversation with Claude. A case study in vibe coding.">
+<meta name="twitter:image" content="https://timvarga.com/assets/img/hero-poster.jpg">
+<link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <nav class="nav-bar">
+    <a class="nav-brand" href="/index.html">timvarga</a>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <ul class="nav-links">
+      <li><a href="/index.html">Home</a></li>
+      <li><a href="/about.html">About</a></li>
+      <li><a href="/explore/" class="nav-active">Explore</a></li>
+      <li class="nav-item--has-dropdown">
+        <a href="/social.html">Socials</a>
+        <div class="nav-dropdown">
+          <a class="ndi ndi--bluesky"   href="https://bsky.app/profile/tvargs.bsky.social" target="_blank" rel="noopener" aria-label="Bluesky"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8.5 8.5c.9 1.2 1.8 3.6 3.5 3.6s2.6-2.4 3.5-3.6c.6-.8 2-.5 2 .8 0 .8-.4 3.7-1.6 4.4-.8.5-2 .3-3.9.3s-3.1.2-3.9-.3C6.9 13 6.5 10.1 6.5 9.3c0-1.3 1.4-1.6 2-.8z" fill="#fff"/></svg></a>
+          <a class="ndi ndi--linkedin"  href="https://www.linkedin.com/in/timvarga/" target="_blank" rel="noopener" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8.5 10H6.5v7h2V10zM7.5 9a1.2 1.2 0 1 0 0-2.4A1.2 1.2 0 0 0 7.5 9zM17.5 13c0-1.9-.8-3-2.4-3-1 0-1.7.5-2.1 1.2V10h-2v7h2v-3.7c0-1 .5-1.8 1.4-1.8.9 0 1.1.7 1.1 1.7V17h2v-4z" fill="#fff"/></svg></a>
+          <a class="ndi ndi--strava"    href="https://www.strava.com/athletes/114949356" target="_blank" rel="noopener" aria-label="Strava"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M10.5 17.5 8 12.5h3L13 5l2 7.5h3L15.5 17.5 13 13l-2.5 4.5z" fill="#fff"/></svg></a>
+          <a class="ndi ndi--instagram" href="https://www.instagram.com/tim" target="_blank" rel="noopener" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="3" stroke="#fff" stroke-width="1.5" fill="none"/><circle cx="12" cy="12" r="2.5" stroke="#fff" stroke-width="1.5" fill="none"/><circle cx="16.2" cy="7.8" r=".8" fill="#fff"/></svg></a>
+          <a class="ndi ndi--facebook"  href="https://www.facebook.com/timvarga" target="_blank" rel="noopener" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M13.5 7.5H15V5h-1.5C12 5 11 6.1 11 7.5V9H9.5v2.5H11V19h2.5v-7.5h1.5L15.5 9H13.5V7.5z" fill="#fff"/></svg></a>
+          <a class="ndi ndi--pinterest" href="https://www.pinterest.com/timvarga/" target="_blank" rel="noopener" aria-label="Pinterest"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5.5A6.5 6.5 0 0 0 9.1 17.8c-.1-.7-.2-1.7 0-2.5l1-4.3s-.3-.5-.3-1.3c0-1.2.7-2.1 1.6-2.1.7 0 1.1.5 1.1 1.2 0 .7-.5 1.8-.7 2.8-.2.8.4 1.5 1.2 1.5 1.4 0 2.5-1.5 2.5-3.6 0-1.9-1.3-3.2-3.2-3.2A3.6 3.6 0 0 0 8.6 9.9c0 .7.3 1.5.6 1.9.1.1 0 .2 0 .3l-.2.9c-.1.3-.3.3-.5.2-1.1-.5-1.8-2-1.8-3.2 0-2.6 1.9-5 5.5-5 2.9 0 5.1 2 5.1 4.7 0 2.8-1.8 5-4.2 5-.8 0-1.6-.4-1.9-1l-.5 1.9c-.2.7-.6 1.5-.9 2A6.5 6.5 0 1 0 12 5.5z" fill="#fff"/></svg></a>
+          <a class="ndi ndi--github"    href="https://github.com/timvarga" target="_blank" rel="noopener" aria-label="GitHub"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 5a7 7 0 0 0-2.21 13.63c.35.06.48-.15.48-.34v-1.2c-1.94.42-2.35-.94-2.35-.94-.32-.81-.78-1.02-.78-1.02-.63-.43.05-.42.05-.42.7.05 1.07.72 1.07.72.62 1.06 1.63.76 2.03.58.06-.45.24-.76.44-.93-1.55-.18-3.18-.77-3.18-3.44 0-.76.27-1.38.72-1.87-.07-.18-.31-.88.07-1.84 0 0 .58-.19 1.9.71A6.6 6.6 0 0 1 12 8.8c.59 0 1.18.08 1.74.23 1.32-.9 1.9-.71 1.9-.71.38.96.14 1.66.07 1.84.45.49.72 1.11.72 1.87 0 2.68-1.63 3.27-3.19 3.44.25.22.48.65.48 1.3v1.93c0 .19.13.4.48.34A7 7 0 0 0 12 5z" fill="#fff"/></svg></a>
+          <a class="ndi ndi--flickr"    href="https://www.flickr.com/photos/timvarga/" target="_blank" rel="noopener" aria-label="Flickr"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="9" cy="12" r="3.5" fill="#ff0084"/><circle cx="15" cy="12" r="3.5" fill="#0063dc"/></svg></a>
+          <a class="ndi ndi--twitter"   href="https://x.com/tvargs" target="_blank" rel="noopener" aria-label="Twitter / X"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M13.6 10.9 18.4 5.5h-1.1L13.1 10.2 9.8 5.5H6l5.1 7.4L6 18.5h1.1l4.4-5.1 3.6 5.1H19L13.6 10.9zm-1.6 1.8-.5-.7-4-5.7H9.3l3.2 4.6.5.7 4.2 6h-1.7l-3.5-5z" fill="#fff"/></svg></a>
+        </div>
+      </li>
+    </ul>
+  </nav>
+</header>
+
+<main>
+  <div class="container">
+
+    <!-- Story header -->
+    <div class="story-header">
+      <h1>The Dinner Tracker</h1>
+      <div class="story-header-meta">
+        <span class="type-badge type-badge--tool">Tool</span>
+        <span class="explore-date">June 2026</span>
+      </div>
+      <p class="story-lede">
+        A meal planner for a wheat-free, dairy-free, pescatarian household —
+        built entirely through conversation with Claude.
+      </p>
+    </div>
+
+    <!-- Section: The Problem -->
+    <div class="story-section">
+      <div class="story-section-label">The Problem</div>
+      <div class="story-prose">
+        <p>
+          We cook dinner at home most nights. My partner and I keep a pescatarian, wheat-free,
+          dairy-free kitchen, which means restaurant fallbacks are limited and meal planning
+          actually matters. For years I kept a running list of recipes we liked in a notes
+          app and held a rough weekly plan in my head. That worked until it didn't.
+        </p>
+        <p>
+          The mental load crept up on me: tracking what was in the fridge and what needed
+          to be used before it went bad, remembering that we'd had pasta twice this week,
+          figuring out whether there was enough quinoa to make the thing I was thinking of —
+          all of it added up to a low-grade friction that made dinner feel like a chore
+          before it started.
+        </p>
+        <p>
+          I wanted something that would let me look at the next week of dinners at a glance,
+          generate a grocery list automatically from whatever was planned, and suggest what
+          to cook based on what was already in the fridge. I wanted it to live in the browser,
+          sync between my phone and laptop, and require essentially zero maintenance. The
+          catch: I don't write software.
+        </p>
+      </div>
+    </div>
+
+    <!-- Section: The Tool (live embed) -->
+    <div class="story-section">
+      <div class="story-section-label">The Tool</div>
+      <p class="story-prose" style="margin-bottom: 1.25rem;">
+        This is the actual tracker, pulling live data from our household's shared meal plan.
+        Everything here is read-only — you can browse the recipe library, explore the grocery
+        list, and play with the pantry matcher, but scheduling and editing are behind a login.
+      </p>
+      <div class="story-app-wrap">
+        <div class="story-app-bar">
+          <span class="story-app-dot"></span>
+          <span>timvarga.com/dinner-tracker · live · read-only</span>
+        </div>
+        <iframe
+          class="story-app-iframe"
+          src="/explore/dinner-tracker-embed.html"
+          title="Dinner Tracker — live read-only view"
+          loading="lazy"
+        ></iframe>
+      </div>
+    </div>
+
+    <!-- Section: How it was made -->
+    <div class="story-section">
+      <div class="story-section-label">How it was made</div>
+      <div class="story-prose">
+        <p>
+          This is a vibe-coded project. That term gets used loosely, but here I mean something
+          specific: I described what I wanted in plain English, Claude wrote the code, I reacted
+          to what I saw in the browser, and we iterated from there. I didn't write a single
+          line of JavaScript. Every function, every tab, every Firebase call came out of a
+          conversation.
+        </p>
+        <p>
+          The first working version appeared in a single session. I started with a prompt
+          that described the core problem — a multi-tab meal planner with a recipe library,
+          a grocery list, and a pantry-matching tab — and asked for a self-contained HTML
+          file I could open in any browser. That first version used local storage and
+          worked immediately.
+        </p>
+
+        <p>The initial prompt looked roughly like this:</p>
+      </div>
+
+      <blockquote class="story-prompt">
+        I want to build a meal planner web app as a single HTML file. My household is
+        wheat-free, dairy-free, and pescatarian. I need at minimum: a recipe library I can
+        search and browse, a weekly view of upcoming planned dinners, and a grocery list
+        that aggregates ingredients from whatever's scheduled. Stretch goal: a tab where I
+        can tap the ingredients I have on hand and it shows me which recipes I can make.
+        Keep it simple — no build tools, just a single file I can open in a browser. Use a
+        clean, card-based design with a dark green header.
+      </blockquote>
+
+      <div class="story-prose">
+        <p>
+          From there the iterations were fast. In the same session I added a proper data
+          model with ingredient types (protein, grain, vegetable, etc.), urgency badges
+          for upcoming meals, and the pantry matcher with a match-percentage bar. The
+          app already felt useful.
+        </p>
+        <p>
+          The bigger lift came in a follow-up session: replacing local storage with
+          Firebase Auth and Firestore, so my partner and I would see the same meal plan
+          on any device without thinking about syncing. That required moving from a simple
+          file to a proper app with a login gate, a cloud database document, and real-time
+          updates via <code>onSnapshot</code>. Again, I described the goal, asked questions
+          when I didn't understand a step (like how Firestore security rules work), and
+          Claude handled the implementation.
+        </p>
+        <p>
+          The version you're looking at above is the current production app — the same one
+          we use to plan dinners every week. It has 21 recipes, a two-week forward plan,
+          and a grocery list that I take to the store on my phone.
+        </p>
+      </div>
+    </div>
+
+    <!-- Section: Try it yourself -->
+    <div class="story-section">
+      <div class="story-section-label">Try it yourself</div>
+      <div class="story-prose">
+        <p>
+          The easiest way to make something like this is to describe your version of the
+          problem and see what comes back. You don't need to know how web apps work — just
+          be specific about what you want to track and what you want to do with that
+          information.
+        </p>
+        <p>
+          Here's a template adapted from the prompt I used. Paste it into a conversation
+          with Claude, swap in your own dietary constraints and features, and iterate from
+          whatever you get back:
+        </p>
+      </div>
+
+      <pre class="story-try-prompt">Build me a meal planner as a single self-contained HTML file
+(no build tools, no frameworks — just one file I can open in a browser).
+
+My household is [dietary constraints, e.g. gluten-free, vegetarian].
+
+I need:
+- A recipe library I can search and browse
+- A weekly view of upcoming planned dinners, with urgency indicators
+  (today / tomorrow / in N days)
+- A grocery list that automatically aggregates ingredients from
+  whatever meals are scheduled in the next 7 days, grouped by
+  category (protein, vegetable, grain, etc.) with checkboxes
+- A "what can I make?" tab: I tap the ingredients I have, it shows
+  me which recipes match and how well
+
+Design: card-based UI with a [color] header. Clean and simple — this
+is a functional tool, not a portfolio piece.
+
+Start with 3–4 sample recipes in my dietary style so I can see it
+working immediately.</pre>
+
+      <div class="story-prose">
+        <p>
+          Once you have a working prototype, the next question to ask is:
+          <em>how do I make this permanent?</em> A file on your desktop works,
+          but it's brittle — one bad save and the data's gone, and you can't
+          use it from your phone. That's when the conversation shifts to Firebase,
+          GitHub Pages, and cloud sync — which is its own project, but a tractable
+          one if you're curious to go there.
+        </p>
+      </div>
+    </div>
+
+    <!-- Back link -->
+    <p style="margin-top: 3rem;">
+      <a href="/explore/">&larr; Back to Explore</a>
+    </p>
+
+  </div><!-- /.container -->
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    &copy; <span id="year">2026</span> Tim Varga. Built with HTML, CSS, JS, and a huge helping of Claude.
+  </div>
+</footer>
+
+<script src="/assets/js/main.js"></script>
+<script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+</body>
+</html>
