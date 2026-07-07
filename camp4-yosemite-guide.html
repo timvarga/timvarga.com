@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Camp 4 Field Guide · Yosemite Valley</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root{
+    --paper:#ECEDE3;        /* topo sheet tint */
+    --paper-2:#E3E5D8;      /* panel */
+    --ink:#3A2F1E;          /* dark bistre text */
+    --contour:#8A6A3E;      /* contour brown */
+    --water:#2E6E7E;        /* USGS water cyan */
+    --water-deep:#1F5763;
+    --forest:#4C7A4A;       /* trail / vegetation green */
+    --forest-tint:#C6D6BA;
+    --section-red:#AE3A2B;  /* section-line / route red */
+    --grid:#C9C7B4;
+    --hairline:#B7B49C;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    background:
+      linear-gradient(0deg, rgba(0,0,0,0) 0, rgba(0,0,0,0) calc(100% - 1px), rgba(140,140,110,.10) 100%),
+      var(--paper);
+    color:var(--ink);
+    font-family:"Spectral", Georgia, serif;
+    font-size:17px;
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:940px;margin:0 auto;padding:0 22px}
+  a{color:var(--water-deep);text-underline-offset:3px;text-decoration-thickness:1px}
+  a:hover{color:var(--section-red)}
+
+  /* ---------- cartographic label utility ---------- */
+  .eyebrow{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:11.5px;letter-spacing:.28em;text-transform:uppercase;
+    color:var(--contour);font-weight:500;
+  }
+  .mono{font-family:"IBM Plex Mono", monospace}
+
+  /* ---------- hero: quad-sheet margin ---------- */
+  header.quad{
+    border-bottom:2px solid var(--ink);
+    padding:34px 0 0;
+    position:relative;
+    overflow:hidden;
+  }
+  header.quad::before{
+    content:"";position:absolute;inset:0;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size:34px 34px;
+    opacity:.35;pointer-events:none;
+    -webkit-mask-image:linear-gradient(180deg, transparent, #000 60%);
+    mask-image:linear-gradient(180deg, transparent, #000 60%);
+  }
+  .quad-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;position:relative}
+  .quad-title{
+    font-family:"Archivo", sans-serif;font-weight:800;
+    font-size:clamp(38px,7vw,74px);line-height:.94;letter-spacing:-.02em;
+    text-transform:uppercase;margin:14px 0 6px;
+  }
+  .quad-title span{color:var(--section-red)}
+  .quad-sub{font-style:italic;color:var(--contour);font-size:19px;margin:0 0 26px}
+  .quad-meta{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+    gap:0;border-top:1px solid var(--hairline);margin-bottom:0;position:relative;
+    font-family:"IBM Plex Mono", monospace;
+  }
+  .quad-meta div{padding:12px 14px 14px;border-right:1px solid var(--hairline)}
+  .quad-meta div:last-child{border-right:none}
+  .quad-meta .k{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--contour)}
+  .quad-meta .v{font-size:15px;font-weight:600;margin-top:3px;color:var(--ink)}
+
+  /* ---------- section scaffolding ---------- */
+  section{padding:52px 0;border-bottom:1px solid var(--hairline)}
+  .sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:8px}
+  .sec-no{
+    font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--section-red);
+    font-weight:600;border:1px solid var(--section-red);border-radius:2px;
+    padding:2px 7px;flex:none;
+  }
+  h2{
+    font-family:"Archivo",sans-serif;font-weight:700;text-transform:uppercase;
+    letter-spacing:.01em;font-size:clamp(24px,3.6vw,34px);line-height:1.05;margin:0;
+  }
+  .lede{font-size:18px;color:#5a4c37;margin:6px 0 26px;max-width:64ch}
+  h3{font-family:"Archivo",sans-serif;font-weight:600;font-size:20px;margin:30px 0 8px;letter-spacing:.01em}
+  p{margin:0 0 14px}
+
+  /* ---------- map ---------- */
+  .map-frame{
+    border:2px solid var(--ink);position:relative;background:#dfe0d3;
+  }
+  #map{height:520px;width:100%}
+  @media(max-width:600px){#map{height:420px}}
+  .map-frame::after{ /* corner ticks like a quad sheet */
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:
+      linear-gradient(var(--ink),var(--ink)) 0 0/14px 2px no-repeat,
+      linear-gradient(var(--ink),var(--ink)) 0 0/2px 14px no-repeat,
+      linear-gradient(var(--ink),var(--ink)) 100% 0/14px 2px no-repeat,
+      linear-gradient(var(--ink),var(--ink)) 100% 0/2px 14px no-repeat,
+      linear-gradient(var(--ink),var(--ink)) 0 100%/14px 2px no-repeat,
+      linear-gradient(var(--ink),var(--ink)) 0 100%/2px 14px no-repeat,
+      linear-gradient(var(--ink),var(--ink)) 100% 100%/14px 2px no-repeat,
+      linear-gradient(var(--ink),var(--ink)) 100% 100%/2px 14px no-repeat;
+  }
+  .legend{
+    display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:16px;
+    font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink);
+  }
+  .legend b{display:inline-flex;align-items:center;gap:7px;font-weight:400}
+  .dot{width:13px;height:13px;border-radius:50%;border:1.5px solid rgba(0,0,0,.35);flex:none}
+  .map-note{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--contour);margin-top:10px}
+  .leaflet-popup-content{font-family:"IBM Plex Mono",monospace;font-size:12.5px;line-height:1.5;margin:11px 13px}
+  .leaflet-popup-content b{font-family:"Archivo",sans-serif;font-size:13.5px;text-transform:uppercase;letter-spacing:.03em}
+  .leaflet-popup-content a{font-weight:600}
+  .leaflet-container{background:#dfe0d3}
+
+  /* ---------- hike table ---------- */
+  .tbl{width:100%;border-collapse:collapse;font-size:14.5px;margin:6px 0 8px;overflow:hidden}
+  .tbl th{
+    font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+    text-align:left;padding:10px 12px;border-bottom:2px solid var(--ink);color:var(--contour);font-weight:500;vertical-align:bottom;
+  }
+  .tbl td{padding:12px;border-bottom:1px solid var(--hairline);vertical-align:top}
+  .tbl tr:hover td{background:rgba(198,214,186,.28)}
+  .tbl .name{font-family:"Archivo",sans-serif;font-weight:600;font-size:15px}
+  .tbl .mono{white-space:nowrap}
+  .pill{
+    display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:10.5px;
+    padding:2px 7px;border-radius:2px;letter-spacing:.04em;text-transform:uppercase;font-weight:500;
+  }
+  .pill.loop{background:var(--forest-tint);color:#2f5230;border:1px solid #9cb890}
+  .pill.oab{background:#e7dcc5;color:#6b4e2e;border:1px solid #cbb488}
+  .grade{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.05em}
+  .g-easy{color:var(--forest)} .g-mod{color:var(--contour)} .g-hard{color:var(--section-red)}
+  @media(max-width:720px){
+    .tbl thead{display:none}
+    .tbl,.tbl tbody,.tbl tr,.tbl td{display:block;width:100%}
+    .tbl tr{border:1px solid var(--hairline);margin-bottom:14px;padding:6px 4px}
+    .tbl td{border:none;padding:5px 12px}
+    .tbl td::before{content:attr(data-l);font-family:"IBM Plex Mono",monospace;font-size:10px;
+      letter-spacing:.12em;text-transform:uppercase;color:var(--contour);display:block;margin-bottom:1px}
+    .tbl td.name-cell::before{display:none}
+  }
+
+  /* ---------- river callout ---------- */
+  .river{
+    background:
+      repeating-linear-gradient(90deg, transparent 0 22px, rgba(46,110,126,.06) 22px 24px),
+      linear-gradient(180deg, rgba(46,110,126,.10), rgba(46,110,126,.04));
+    border:1px solid var(--water);border-left:5px solid var(--water);
+    padding:22px 24px;margin:24px 0 4px;border-radius:2px;
+  }
+  .river h3{margin-top:0;color:var(--water-deep)}
+
+  /* ---------- day cards ---------- */
+  .days{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:0;border:1px solid var(--hairline)}
+  .day{padding:20px 22px;border-right:1px solid var(--hairline)}
+  .day:last-child{border-right:none}
+  .day .d-no{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.16em;color:var(--section-red);text-transform:uppercase}
+  .day h3{margin:4px 0 12px;font-size:18px}
+  .day ul{margin:0;padding-left:18px}
+  .day li{margin-bottom:9px;font-size:15px;line-height:1.5}
+  @media(max-width:640px){.day{border-right:none;border-bottom:1px solid var(--hairline)}.day:last-child{border-bottom:none}}
+
+  /* ---------- two-col lists (packing) ---------- */
+  .cols{columns:2;column-gap:38px}
+  @media(max-width:600px){.cols{columns:1}}
+  .grouplist{break-inside:avoid;margin-bottom:22px}
+  .grouplist h3{margin-top:0;font-size:16px;display:flex;align-items:center;gap:9px}
+  .grouplist h3::before{content:"";width:9px;height:9px;background:var(--forest);flex:none;transform:rotate(45deg)}
+  .grouplist ul{margin:0;padding-left:18px}
+  .grouplist li{font-size:14.5px;line-height:1.5;margin-bottom:5px}
+
+  /* ---------- meals ---------- */
+  .meal-day{border-left:3px solid var(--contour);padding:2px 0 2px 20px;margin-bottom:26px}
+  .meal-day > .d-no{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.16em;color:var(--contour);text-transform:uppercase}
+  .meal{margin:10px 0}
+  .meal .m-label{font-family:"Archivo",sans-serif;font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--section-red)}
+  .badges{display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 22px}
+  .badge{font-family:"IBM Plex Mono",monospace;font-size:11px;padding:4px 10px;border:1px solid var(--forest);color:var(--forest);border-radius:2px;letter-spacing:.04em}
+
+  /* ---------- safety ---------- */
+  .safety{background:var(--paper-2);border:1px solid var(--hairline);padding:6px 24px 10px;border-radius:2px}
+  .safety .row{display:flex;gap:16px;padding:16px 0;border-bottom:1px dashed var(--hairline)}
+  .safety .row:last-child{border-bottom:none}
+  .safety .tag{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+    color:#fff;background:var(--section-red);padding:3px 8px;border-radius:2px;height:fit-content;flex:none;white-space:nowrap;margin-top:3px}
+  .safety .row.info .tag{background:var(--water)}
+  .safety .row p{margin:0;font-size:15px}
+  .safety .row b{font-family:"Archivo",sans-serif}
+
+  .notice{
+    font-family:"IBM Plex Mono",monospace;font-size:13px;line-height:1.55;
+    background:rgba(174,58,43,.08);border:1px solid var(--section-red);
+    padding:14px 16px;border-radius:2px;margin:20px 0;color:#5a2a22;
+  }
+
+  /* ---------- print link ---------- */
+  .sec-head{justify-content:space-between}
+  .sec-head .titlewrap{display:flex;align-items:baseline;gap:14px}
+  .printlink{
+    font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--water-deep);background:none;border:1px solid var(--water-deep);border-radius:2px;
+    padding:6px 12px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;
+    transition:background .15s,color .15s;flex:none;
+  }
+  .printlink:hover{background:var(--water-deep);color:var(--paper)}
+
+  /* ---------- grocery checklist ---------- */
+  .groc{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:0;border:1px solid var(--hairline)}
+  .groc-cat{padding:20px 22px;border-right:1px solid var(--hairline);border-bottom:1px solid var(--hairline)}
+  .groc-cat h3{margin:0 0 12px;font-size:15px;display:flex;align-items:center;gap:9px}
+  .groc-cat h3::before{content:"";width:9px;height:9px;background:var(--water);flex:none;border-radius:50%}
+  .groc-cat ul{list-style:none;margin:0;padding:0}
+  .groc-cat li{margin-bottom:7px;font-size:14.5px;line-height:1.4}
+  .groc-cat label{display:flex;gap:9px;align-items:flex-start;cursor:pointer}
+  .groc-cat input{margin-top:5px;accent-color:var(--forest);flex:none;cursor:pointer}
+  .groc-cat input:checked + span{text-decoration:line-through;color:var(--hairline)}
+  @media(max-width:640px){.groc-cat{border-right:none}}
+
+  /* ---------- natural history: geologic timeline ---------- */
+  .geo{margin:8px 0 6px;border-left:2px solid var(--contour);padding-left:0}
+  .geo-step{position:relative;padding:0 0 22px 30px}
+  .geo-step::before{content:"";position:absolute;left:-7px;top:4px;width:12px;height:12px;border-radius:50%;
+    background:var(--paper);border:2px solid var(--contour)}
+  .geo-step:last-child{padding-bottom:0}
+  .geo-when{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--section-red)}
+  .geo-step h3{margin:2px 0 5px;font-size:17px}
+  .geo-step p{margin:0;font-size:15px}
+
+  /* ---------- ecosystems ---------- */
+  .eco{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:0;border:1px solid var(--hairline);margin-top:6px}
+  .eco-card{padding:20px 22px;border-right:1px solid var(--hairline)}
+  .eco-card:last-child{border-right:none}
+  .eco-card .band{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--contour)}
+  .eco-card h3{margin:4px 0 8px;font-size:18px}
+  .eco-card p{font-size:14.5px;margin:0}
+  .eco-card p + p{margin-top:8px}
+  .eco-card .lbl{font-family:"Archivo",sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--forest)}
+  @media(max-width:640px){.eco-card{border-right:none;border-bottom:1px solid var(--hairline)}.eco-card:last-child{border-bottom:none}}
+
+  /* ---------- field guide ---------- */
+  .fg-group{margin:26px 0 4px}
+  .fg-group > h3{
+    font-size:16px;margin:0 0 14px;padding-bottom:7px;border-bottom:2px solid var(--ink);
+    display:flex;align-items:center;gap:10px;
+  }
+  .fg-group > h3 .ct{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--contour);font-weight:400;letter-spacing:.08em;margin-left:auto;text-transform:none}
+  .fg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(258px,1fr));gap:14px}
+  .fg-item{border:1px solid var(--hairline);border-left:3px solid var(--cat);border-radius:2px;background:rgba(255,255,255,.28);padding:12px 14px}
+  .fg-item .nm{font-family:"Archivo",sans-serif;font-weight:600;font-size:15px;line-height:1.2}
+  .fg-item .sci{font-family:"IBM Plex Mono",monospace;font-style:italic;font-size:11.5px;color:var(--contour);margin:1px 0 6px}
+  .fg-item .mk{font-size:13.5px;line-height:1.45}
+  .fg-item .mk b{font-family:"Archivo",sans-serif;font-weight:600;font-size:12px}
+  .cat-tree{--cat:#4C7A4A;--tbg:#dde8d4} .cat-shrub{--cat:#8A7A3E;--tbg:#e9e3ce} .cat-mammal{--cat:#8A5A2E;--tbg:#e7ddcf}
+  .cat-bird{--cat:#2E6E7E;--tbg:#d6e3e6} .cat-insect{--cat:#AE3A2B;--tbg:#eddad4}
+
+  footer{padding:40px 0 60px;text-align:center}
+  footer p{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--contour);letter-spacing:.04em;max-width:60ch;margin:0 auto 8px}
+</style>
+</head>
+<body>
+
+<header class="quad">
+  <div class="wrap">
+    <div class="quad-top">
+      <div class="eyebrow">U.S. field guide series · Sierra Nevada</div>
+      <div class="eyebrow">3 persons · 2 nights · July</div>
+    </div>
+    <h1 class="quad-title">Camp&nbsp;4<br><span>Yosemite Valley</span></h1>
+    <p class="quad-sub">A topographic trip plan — activities, packing, and meals for the walk-in climbers' camp.</p>
+    <div class="quad-meta">
+      <div><div class="k">Quadrangle</div><div class="v">Half Dome, CA</div></div>
+      <div><div class="k">Valley floor</div><div class="v">4,000 ft</div></div>
+      <div><div class="k">Datum</div><div class="v">37.742°N 119.603°W</div></div>
+      <div><div class="k" id="wx-label">Now · Yosemite Valley</div><div class="v" id="wx-value">Loading live…</div></div>
+      <div><div class="k">Diet</div><div class="v">WF · DF · Pesc.</div></div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ MAP ============ -->
+<section id="map-section">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-no">01</span><h2>The Valley, plotted</h2></div>
+    <p class="lede">Live USGS topographic base map. Tap any marker for details and trail links. Trails are drawn from real routes; use it to orient camp, trailheads, viewpoints, and the river spots below.</p>
+    <div class="map-frame"><div id="map"></div></div>
+    <div class="legend">
+      <b><span class="dot" style="background:#AE3A2B"></span>Base camp</b>
+      <b><span class="dot" style="background:#4C7A4A"></span>Trailhead</b>
+      <b><span class="dot" style="background:#2E6E7E"></span>River / swim</b>
+      <b><span class="dot" style="background:#8A6A3E"></span>Viewpoint / sight</b>
+      <b><span class="dot" style="background:#3A2F1E"></span>Services</b>
+    </div>
+    <p class="map-note">Base map: USGS The National Map (USGSTopo) · pinch/scroll to zoom, contours in feet.</p>
+  </div>
+</section>
+
+<!-- ============ HIKES ============ -->
+<section id="hikes">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-no">02</span><h2>Recommended hikes</h2></div>
+    <p class="lede">Five routes scaled from a 1-mile stroll to a full-day climb, all reachable from Camp 4 or a short free-shuttle hop. Distances are round-trip unless noted.</p>
+
+    <table class="tbl">
+      <thead>
+        <tr><th>Route</th><th>Length</th><th>Shape</th><th>Grade</th><th>See along the way</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="name-cell name"><a href="https://www.alltrails.com/poi/us/california/lower-yosemite-fall" target="_blank" rel="noopener">Lower Yosemite Fall</a></td>
+          <td data-l="Length" class="mono">1.0 mi</td>
+          <td data-l="Shape"><span class="pill loop">Loop</span></td>
+          <td data-l="Grade"><span class="grade g-easy">Easy · flat/paved</span></td>
+          <td data-l="Highlights">Base-of-falls footbridge, mist and rainbows, interpretive signs. Stroller-friendly warm-up right by camp.</td>
+        </tr>
+        <tr>
+          <td class="name-cell name"><a href="https://www.alltrails.com/trail/us/california/mirror-lake-loop--2" target="_blank" rel="noopener">Mirror Lake</a></td>
+          <td data-l="Length" class="mono">2.1–5.1 mi</td>
+          <td data-l="Shape"><span class="pill loop">Loop</span> <span class="pill oab">or O&amp;B</span></td>
+          <td data-l="Grade"><span class="grade g-easy">Easy–mod · +300 ft</span></td>
+          <td data-l="Highlights">Half Dome from directly below, Tenaya Creek pools, Washington Column. Shaded, quiet — best paired with a creek dip.</td>
+        </tr>
+        <tr>
+          <td class="name-cell name"><a href="https://www.alltrails.com/trail/us/california/upper-yosemite-falls-trail" target="_blank" rel="noopener">Columbia Rock</a></td>
+          <td data-l="Length" class="mono">2.0 mi</td>
+          <td data-l="Shape"><span class="pill oab">Out &amp; back</span></td>
+          <td data-l="Grade"><span class="grade g-mod">Mod · +1,000 ft</span></td>
+          <td data-l="Highlights">Sweeping Valley view, Half Dome &amp; Sentinel Rock. The first payoff on the Upper Falls trail — trailhead is <em>in</em> Camp 4.</td>
+        </tr>
+        <tr>
+          <td class="name-cell name"><a href="https://www.alltrails.com/trail/us/california/upper-yosemite-falls-trail" target="_blank" rel="noopener">Upper Yosemite Fall</a></td>
+          <td data-l="Length" class="mono">7.2 mi</td>
+          <td data-l="Shape"><span class="pill oab">Out &amp; back</span></td>
+          <td data-l="Grade"><span class="grade g-hard">Strenuous · +2,700 ft</span></td>
+          <td data-l="Highlights">Top of North America's tallest waterfall, the overlook platform, Yosemite Point. Brutal exposed switchbacks — dawn start.</td>
+        </tr>
+        <tr>
+          <td class="name-cell name"><a href="https://www.alltrails.com/trail/us/california/vernal-and-nevada-falls-via-the-mist-trail" target="_blank" rel="noopener">Mist Trail — Vernal &amp; Nevada</a></td>
+          <td data-l="Length" class="mono">3.0 / 5.9 mi</td>
+          <td data-l="Shape"><span class="pill loop">Loop</span> <span class="pill oab">or O&amp;B</span></td>
+          <td data-l="Grade"><span class="grade g-hard">Strenuous · +1,000/1,900 ft</span></td>
+          <td data-l="Highlights">Granite staircase in the waterfall spray, Emerald Pool, Nevada Fall &amp; Liberty Cap. Return via John Muir Trail for the loop.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="notice">
+      ⚠ CURRENT CONDITION (July 2026): On the Mist Trail, the John Muir Trail "Ice Cut" between Clark Point and the top of Nevada Fall is temporarily inaccessible. You can still reach both falls, but the classic loop may route you back the way you came — check nps.gov/yose current conditions the morning you go.
+    </div>
+  </div>
+</section>
+
+<!-- ============ RIVER DAY ============ -->
+<section id="river">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-no">03</span><h2>A day on the Merced</h2></div>
+    <p class="lede">Build in at least one slow afternoon by the water — it's the best antidote to a hot Valley July and to tired legs after a big climb.</p>
+    <div class="river">
+      <h3>Where to swim, wade &amp; float</h3>
+      <p><b>Sentinel Beach &amp; Swinging Bridge</b> — the classic sandy spots on the south side of the Valley loop, calm shallows with a straight-on view of Yosemite Falls. Easy to reach by bike or the free shuttle. Best for wading and lazy floating.</p>
+      <p><b>Cathedral Beach</b> — quieter sand beach downstream with El Capitan looming overhead. Great late-afternoon light for photos.</p>
+      <p><b>Tenaya Creek (Mirror Lake)</b> — cold, clear pools if you want to combine a short shaded hike with a dip.</p>
+      <p style="margin-bottom:0"><strong>Rafting:</strong> when flows allow in summer, you can float the gentle stretch from Stoneman Bridge toward Sentinel Beach; rentals operate out of Half Dome Village. By late July the current is usually mellow, but always scout for strainers and cold water, and keep well clear of any spot above a rapid or fall.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ NATURAL HISTORY ============ -->
+<section id="natural-history">
+  <div class="wrap">
+    <div class="sec-head"><div class="titlewrap"><span class="sec-no">04</span><h2>Natural history</h2></div></div>
+    <p class="lede">Yosemite Valley is a granite gorge carved by ice and drained by the Merced. Knowing how it formed — and who lives here now — turns a good trip into a great one. Use the field guide below to name what you see on the trails in Section 02.</p>
+
+    <h3>How the Valley was made</h3>
+    <div class="geo">
+      <div class="geo-step">
+        <div class="geo-when">~100 million yrs ago · Cretaceous</div>
+        <h3>Granite born underground</h3>
+        <p>Molten rock pooled miles beneath an ancient volcanic range and cooled slowly into coarse-grained granite (technically granodiorite). These separate <em>plutons</em> — El Capitan Granite, Half Dome Granodiorite and others — are the rock you'll touch everywhere in the Valley.</p>
+      </div>
+      <div class="geo-step">
+        <div class="geo-when">~10 million yrs ago · Miocene onward</div>
+        <h3>The Sierra rises &amp; tilts</h3>
+        <p>The whole Sierra Nevada block uplifted and tilted westward. Steeper gradients gave the ancestral Merced River cutting power, and it sawed a deep, V-shaped river canyon into the granite.</p>
+      </div>
+      <div class="geo-step">
+        <div class="geo-when">~2 million–15,000 yrs ago · Pleistocene</div>
+        <h3>Glaciers widen the V into a U</h3>
+        <p>Repeated ice ages sent glaciers grinding down the canyon. Ice quarries rock far more brutally than water, bulldozing the V into the broad, flat-floored, sheer-walled <strong>U-shaped valley</strong> you see today. Side streams left "hanging" — which is why Yosemite, Bridalveil and Ribbon fall from cliff lips rather than reaching the floor.</p>
+      </div>
+      <div class="geo-step">
+        <div class="geo-when">Throughout · ongoing</div>
+        <h3>Domes peel, cliffs stand</h3>
+        <p>Released from overlying pressure, granite sheds curved outer layers like an onion — <em>exfoliation</em> — rounding North Dome and sculpting Half Dome (whose "missing half" is a myth; glaciers removed only a modest slice along vertical joints). Vertical fracture planes gave El Capitan and the Cathedral Rocks their flat faces.</p>
+      </div>
+      <div class="geo-step">
+        <div class="geo-when">~15,000 yrs ago → now</div>
+        <h3>A lake becomes a meadow</h3>
+        <p>As the last glacier melted it left a rock dam (moraine) that ponded ancient Lake Yosemite. The lake filled with sediment, leaving the level, sediment-floored Valley — perfect for the meadows and the meandering Merced.</p>
+      </div>
+    </div>
+
+    <h3>Three ecosystems on the Valley floor</h3>
+    <div class="eco">
+      <div class="eco-card">
+        <div class="band">~4,000 ft · sunny slopes</div>
+        <h3>Lower montane forest</h3>
+        <p>The dominant Valley woodland: open, park-like stands of big conifers over a sparse, aromatic understory. Fire-adapted — historically kept open by frequent low burns.</p>
+        <p><span class="lbl">Look for</span> ponderosa pine, incense cedar, California black oak, white fir; Steller's jays and acorn woodpeckers overhead; mule deer at the edges.</p>
+      </div>
+      <div class="eco-card">
+        <div class="band">Along the Merced · shaded, wet</div>
+        <h3>Riparian corridor</h3>
+        <p>A ribbon of broadleaf trees hugging the river and side creeks — the greenest, coolest, most wildlife-rich strip in the Valley, and where you'll hang out in Section 03.</p>
+        <p><span class="lbl">Look for</span> black cottonwood, white alder, big-leaf maple, willows, Pacific dogwood; American dippers on the boulders; frogs, dragonflies and trout in the water.</p>
+      </div>
+      <div class="eco-card">
+        <div class="band">Cook's &amp; Sentinel meadows · open</div>
+        <h3>Montane meadow</h3>
+        <p>Seasonally wet grasslands ringed by forest, fed by a high water table. Peak wildflowers early summer; prime wildlife viewing at dawn and dusk.</p>
+        <p><span class="lbl">Look for</span> lupine, corn lily, monkeyflower, sedges; grazing deer and coyotes hunting voles; swallows and dragonflies working the air.</p>
+      </div>
+    </div>
+
+    <h3 style="margin-top:36px">Field guide — what you'll see</h3>
+    <p style="font-size:15px;color:#5a4c37;margin-top:0;max-width:64ch">Each entry gives the scientific name and the single field mark that nails the ID fastest. Colored tabs group them by type.</p>
+
+    <!-- TREES -->
+    <div class="fg-group">
+      <h3>Trees <span class="ct">conifers &amp; broadleaves</span></h3>
+      <div class="fg-grid">
+        <div class="fg-item cat-tree"><div class="nm">Ponderosa pine</div><div class="sci">Pinus ponderosa</div><div class="mk"><b>Mark:</b> jigsaw-puzzle orange bark that smells of butterscotch/vanilla in the sun; long needles in bundles of 3.</div></div>
+        <div class="fg-item cat-tree"><div class="nm">Incense cedar</div><div class="sci">Calocedrus decurrens</div><div class="mk"><b>Mark:</b> shreddy cinnamon-red bark, flat sprays of scale-like foliage; small cones shaped like a duck's bill.</div></div>
+        <div class="fg-item cat-tree"><div class="nm">California black oak</div><div class="sci">Quercus kelloggii</div><div class="mk"><b>Mark:</b> the Valley's big deciduous oak — deeply lobed leaves with bristle-tipped points; acorns were a staple for the Ahwahneechee.</div></div>
+        <div class="fg-item cat-tree"><div class="nm">White fir</div><div class="sci">Abies concolor</div><div class="mk"><b>Mark:</b> soft flat blue-green needles that curve upward; cones sit upright on branches and disintegrate in place.</div></div>
+        <div class="fg-item cat-tree"><div class="nm">Sugar pine</div><div class="sci">Pinus lambertiana</div><div class="mk"><b>Mark:</b> the world's tallest pine, with enormous 12–20&quot; cones dangling at branch tips.</div></div>
+        <div class="fg-item cat-tree"><div class="nm">Douglas-fir</div><div class="sci">Pseudotsuga menziesii</div><div class="mk"><b>Mark:</b> soft flat needles all around the twig; cones have three-pointed "mouse-tail" bracts poking out.</div></div>
+        <div class="fg-item cat-tree"><div class="nm">Black cottonwood</div><div class="sci">Populus trichocarpa</div><div class="mk"><b>Mark:</b> riverside broadleaf; heart-shaped leaves that flutter and turn gold in fall; sweet balsam smell in spring.</div></div>
+        <div class="fg-item cat-tree"><div class="nm">Big-leaf maple</div><div class="sci">Acer macrophyllum</div><div class="mk"><b>Mark:</b> enormous 5-lobed leaves (up to a foot wide); paired winged seeds; shady, damp spots.</div></div>
+        <div class="fg-item cat-tree"><div class="nm">Pacific dogwood</div><div class="sci">Cornus nuttallii</div><div class="mk"><b>Mark:</b> understory tree with large creamy-white "petals" (bracts) in late spring; red berry clusters in fall.</div></div>
+      </div>
+    </div>
+
+    <!-- SHRUBS & PLANTS -->
+    <div class="fg-group">
+      <h3>Shrubs &amp; wildflowers <span class="ct">understory &amp; meadow</span></h3>
+      <div class="fg-grid">
+        <div class="fg-item cat-shrub"><div class="nm">Greenleaf manzanita</div><div class="sci">Arctostaphylos patula</div><div class="mk"><b>Mark:</b> smooth, sinuous mahogany-red bark and stiff round evergreen leaves; urn-shaped pink flowers.</div></div>
+        <div class="fg-item cat-shrub"><div class="nm">Mountain misery</div><div class="sci">Chamaebatia foliolosa</div><div class="mk"><b>Mark:</b> low, sticky, fern-like groundcover carpeting pine forest; pungent resinous smell underfoot.</div></div>
+        <div class="fg-item cat-shrub"><div class="nm">Deerbrush (Ceanothus)</div><div class="sci">Ceanothus integerrimus</div><div class="mk"><b>Mark:</b> loose sprays of foamy white-to-blue blossoms in early summer; a key deer browse and nitrogen-fixer.</div></div>
+        <div class="fg-item cat-shrub"><div class="nm">Western azalea</div><div class="sci">Rhododendron occidentale</div><div class="mk"><b>Mark:</b> streamside shrub with showy, intensely fragrant white-and-yellow flowers in early summer.</div></div>
+        <div class="fg-item cat-shrub"><div class="nm">Blue elderberry</div><div class="sci">Sambucus nigra ssp. cerulea</div><div class="mk"><b>Mark:</b> flat-topped cream flower clusters, then powdery-blue berries; a wildlife magnet.</div></div>
+        <div class="fg-item cat-shrub"><div class="nm">Lupine</div><div class="sci">Lupinus spp.</div><div class="mk"><b>Mark:</b> palm-shaped leaves that hold dew drops; spikes of blue-purple pea flowers in meadows.</div></div>
+        <div class="fg-item cat-shrub"><div class="nm">Common monkeyflower</div><div class="sci">Erythranthe guttata</div><div class="mk"><b>Mark:</b> bright yellow snapdragon-like blooms with red spots, in wet seeps and streambanks.</div></div>
+        <div class="fg-item cat-shrub"><div class="nm">Snow plant</div><div class="sci">Sarcodes sanguinea</div><div class="mk"><b>Mark:</b> startling blood-red asparagus-like spike pushing through duff in spring — no green; it feeds on fungi. Never pick.</div></div>
+        <div class="fg-item cat-shrub"><div class="nm">Corn lily</div><div class="sci">Veratrum californicum</div><div class="mk"><b>Mark:</b> big pleated corn-like leaves in wet meadows; tall plumes of white flowers. Toxic.</div></div>
+      </div>
+    </div>
+
+    <!-- MAMMALS -->
+    <div class="fg-group">
+      <h3>Mammals <span class="ct">dawn &amp; dusk are best</span></h3>
+      <div class="fg-grid">
+        <div class="fg-item cat-mammal"><div class="nm">American black bear</div><div class="sci">Ursus americanus</div><div class="mk"><b>Mark:</b> the Valley's only bear (no grizzlies in CA since the 1920s); coat ranges blond to cinnamon to black. Store food religiously.</div></div>
+        <div class="fg-item cat-mammal"><div class="nm">Mule deer</div><div class="sci">Odocoileus hemionus</div><div class="mk"><b>Mark:</b> big mule-like ears, black-tipped tail, stiff-legged bouncing gait ("stotting"); everywhere in meadows.</div></div>
+        <div class="fg-item cat-mammal"><div class="nm">Coyote</div><div class="sci">Canis latrans</div><div class="mk"><b>Mark:</b> slender, gray-buff, bushy black-tipped tail carried low; often seen mousing in meadows at dawn.</div></div>
+        <div class="fg-item cat-mammal"><div class="nm">Western gray squirrel</div><div class="sci">Sciurus griseus</div><div class="mk"><b>Mark:</b> large, silvery-gray with a long plume tail and white belly; an oak-and-pine tree squirrel.</div></div>
+        <div class="fg-item cat-mammal"><div class="nm">Douglas squirrel (chickaree)</div><div class="sci">Tamiasciurus douglasii</div><div class="mk"><b>Mark:</b> small, feisty, rusty-bellied; the loud scolding chatter from the conifers is almost always this one.</div></div>
+        <div class="fg-item cat-mammal"><div class="nm">Golden-mantled ground squirrel</div><div class="sci">Callospermophilus lateralis</div><div class="mk"><b>Mark:</b> like a big chipmunk but the head is plain — stripes on the body <em>only</em>, not the face.</div></div>
+        <div class="fg-item cat-mammal"><div class="nm">Lodgepole chipmunk</div><div class="sci">Neotamias speciosus</div><div class="mk"><b>Mark:</b> small and quick with bold stripes running <em>through the face and eye</em>; tail held vertical when running.</div></div>
+        <div class="fg-item cat-mammal"><div class="nm">Bobcat</div><div class="sci">Lynx rufus</div><div class="mk"><b>Mark:</b> elusive; house-cat-plus size, spotted tawny coat, short black-banded "bobbed" tail and ear tufts.</div></div>
+      </div>
+    </div>
+
+    <!-- BIRDS -->
+    <div class="fg-group">
+      <h3>Birds <span class="ct">forest, cliff &amp; river</span></h3>
+      <div class="fg-grid">
+        <div class="fg-item cat-bird"><div class="nm">Steller's jay</div><div class="sci">Cyanocitta stelleri</div><div class="mk"><b>Mark:</b> deep-blue body, charcoal head with a tall spiky crest; bold, loud, and eyeing your snacks.</div></div>
+        <div class="fg-item cat-bird"><div class="nm">Acorn woodpecker</div><div class="sci">Melanerpes formicivorus</div><div class="mk"><b>Mark:</b> clownish red-black-white face; drills oaks and snags full of acorn "granaries"; laughing <em>waka-waka</em> call.</div></div>
+        <div class="fg-item cat-bird"><div class="nm">American dipper</div><div class="sci">Cinclus mexicanus</div><div class="mk"><b>Mark:</b> chunky slate-gray songbird that bobs on midstream rocks and <em>walks underwater</em> in the Merced. The signature river bird.</div></div>
+        <div class="fg-item cat-bird"><div class="nm">Mountain chickadee</div><div class="sci">Poecile gambeli</div><div class="mk"><b>Mark:</b> tiny, black cap with a telltale white eyebrow stripe; buzzy <em>chick-a-dee</em> from the conifers.</div></div>
+        <div class="fg-item cat-bird"><div class="nm">Western tanager</div><div class="sci">Piranga ludoviciana</div><div class="mk"><b>Mark:</b> male is unmistakable — yellow body, black wings, flame-orange head; a summer jewel of the canopy.</div></div>
+        <div class="fg-item cat-bird"><div class="nm">Dark-eyed junco</div><div class="sci">Junco hyemalis</div><div class="mk"><b>Mark:</b> small ground sparrow with a dark hood and flashing white outer tail feathers as it flushes.</div></div>
+        <div class="fg-item cat-bird"><div class="nm">Common raven</div><div class="sci">Corvus corax</div><div class="mk"><b>Mark:</b> big, all-black, wedge-shaped tail, deep croak; soars and tumbles along the cliffs.</div></div>
+        <div class="fg-item cat-bird"><div class="nm">Peregrine falcon</div><div class="sci">Falco peregrinus</div><div class="mk"><b>Mark:</b> nests on El Capitan and other walls; slate-backed with a dark "helmet"; the fastest animal alive in its dive.</div></div>
+      </div>
+    </div>
+
+    <!-- INSECTS -->
+    <div class="fg-group">
+      <h3>Insects &amp; invertebrates <span class="ct">meadow, air &amp; water</span></h3>
+      <div class="fg-grid">
+        <div class="fg-item cat-insect"><div class="nm">Western tiger swallowtail</div><div class="sci">Papilio rutulus</div><div class="mk"><b>Mark:</b> large yellow butterfly with bold black tiger stripes and tailed hindwings; drifts along the river.</div></div>
+        <div class="fg-item cat-insect"><div class="nm">California tortoiseshell</div><div class="sci">Nymphalis californica</div><div class="mk"><b>Mark:</b> orange-and-black; in boom years erupts in enormous migrating clouds over the ridges.</div></div>
+        <div class="fg-item cat-insect"><div class="nm">Dragonflies &amp; damselflies</div><div class="sci">Order Odonata</div><div class="mk"><b>Mark:</b> hawk the meadows and river margins; dragonflies rest with wings out, damselflies fold them along the body.</div></div>
+        <div class="fg-item cat-insect"><div class="nm">Bumblebees</div><div class="sci">Bombus spp.</div><div class="mk"><b>Mark:</b> fuzzy black-and-yellow, working lupine and monkeyflower; key high-country pollinators.</div></div>
+        <div class="fg-item cat-insect"><div class="nm">Convergent lady beetle</div><div class="sci">Hippodamia convergens</div><div class="mk"><b>Mark:</b> the familiar ladybug; gathers in huge overwintering clusters in the Sierra.</div></div>
+        <div class="fg-item cat-insect"><div class="nm">Stoneflies &amp; mayflies</div><div class="sci">Plecoptera / Ephemeroptera</div><div class="mk"><b>Mark:</b> clean-water larvae in the Merced — the food base for trout and dippers; adults hatch streamside.</div></div>
+        <div class="fg-item cat-insect"><div class="nm">Western yellowjacket</div><div class="sci">Vespula pensylvanica</div><div class="mk"><b>Mark:</b> ground-nesting wasp that crashes late-summer picnics; keep food covered and stay calm around them.</div></div>
+        <div class="fg-item cat-insect"><div class="nm">Carpenter bee</div><div class="sci">Xylocopa spp.</div><div class="mk"><b>Mark:</b> big, glossy, low-droning bee that bores nest tunnels in dead wood; mostly harmless.</div></div>
+      </div>
+    </div>
+
+    <div class="notice">
+      ⚠ A NATURALIST'S TWO CAUTIONS: give wildlife room and never feed it — a food-habituated bear or deer is a dead one. And two locals aren't on the "charming" list: the <strong>northern Pacific rattlesnake</strong> (watch hands and feet on warm rocky ground; it wants nothing to do with you) and <strong>western black-legged ticks</strong> in brushy grass (a Lyme vector — check yourself after off-trail travel).
+    </div>
+  </div>
+</section>
+
+<!-- ============ ITINERARY ============ -->
+<section id="itinerary">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-no">05</span><h2>Two-night itinerary</h2></div>
+    <p class="lede">Front-load the hard hike, protect an afternoon for the river, and keep mornings early — the Valley belongs to dawn hikers in July.</p>
+    <div class="days">
+      <div class="day">
+        <div class="d-no">Day 1 · Arrive</div>
+        <h3>Settle &amp; stretch the legs</h3>
+        <ul>
+          <li>Set up camp; stash all scented items in the bear locker.</li>
+          <li>Watch climbers work the <strong>Columbia Boulder</strong> (Midnight Lightning) in camp.</li>
+          <li><strong>Lower Yosemite Fall loop</strong> (1 mi) — right next door.</li>
+          <li>Golden hour at <strong>Sentinel Bridge / Cook's Meadow</strong> for Half Dome.</li>
+          <li>Campfire window is 5–10 PM; check the board for ranger talks.</li>
+        </ul>
+      </div>
+      <div class="day">
+        <div class="d-no">Day 2 · Big day + water</div>
+        <h3>Climb, then cool off</h3>
+        <ul>
+          <li>Dawn start on <strong>Upper Yosemite Fall</strong> (or turn at Columbia Rock), <em>or</em> shuttle to Happy Isles for the <strong>Mist Trail</strong>.</li>
+          <li>Back by early afternoon; refill water and snacks.</li>
+          <li><strong>River time</strong> at Sentinel Beach — swim, float, nap in the shade.</li>
+          <li>Optional flat 12-mi Valley bike loop (rentals at Yosemite Valley Lodge, next to camp).</li>
+          <li>Showers at Half Dome Village; dinner at camp.</li>
+        </ul>
+      </div>
+      <div class="day">
+        <div class="d-no">Day 3 · Pack out</div>
+        <h3>Light, then leave</h3>
+        <ul>
+          <li>First light at <strong>Tunnel View</strong> or <strong>Valley View</strong> before crowds.</li>
+          <li>Easy <strong>Mirror Lake</strong> stroll and a last Tenaya Creek dip.</li>
+          <li>Coffee &amp; the climbing exhibits in Yosemite Village.</li>
+          <li>Break camp by <strong>noon</strong> checkout; latch the empty locker.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PACKING ============ -->
+<section id="packing">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="titlewrap"><span class="sec-no">06</span><h2>Packing list</h2></div>
+      <button class="printlink" onclick="printPacking()">⎙ Print list</button>
+    </div>
+    <p class="lede">For three people, two nights. Everything with a scent lives in the bear locker (≈43&quot;W × 35&quot;D × 28&quot;H) — never in tents or the car.</p>
+    <div class="cols" id="packing-cols">
+      <div class="grouplist">
+        <h3>Shelter &amp; sleep</h3>
+        <ul>
+          <li>Tent(s) with rainfly + footprint (afternoon storms happen)</li>
+          <li>Sleeping bags rated ~40°F, sleeping pads</li>
+          <li>Small pillow or clothes stuff sack</li>
+        </ul>
+      </div>
+      <div class="grouplist">
+        <h3>Camp kitchen</h3>
+        <ul>
+          <li>2-burner or backpacking stove + fuel (fires only 5–10 PM)</li>
+          <li>Lighter + backup matches</li>
+          <li>Pot, skillet, spatula, spoon, sharp knife, cutting board</li>
+          <li>Plates, bowls, mugs, utensils ×3</li>
+          <li>Cooler w/ ice (must fit the locker)</li>
+          <li>Biodegradable soap, sponge, basin, trash bags</li>
+          <li>Coffee kit, 3–4 L water capacity per person</li>
+        </ul>
+      </div>
+      <div class="grouplist">
+        <h3>Clothing (per person)</h3>
+        <ul>
+          <li>Broken-in hiking shoes + camp sandals</li>
+          <li>2 hiking shirts, warm midlayer (nights hit the 50s)</li>
+          <li>Light rain shell</li>
+          <li>Hiking pants/shorts, sleep clothes, wool socks ×3</li>
+          <li>Sun hat, sunglasses, swimsuit, quick-dry towel</li>
+        </ul>
+      </div>
+      <div class="grouplist">
+        <h3>Safety &amp; essentials</h3>
+        <ul>
+          <li>First aid kit: blister care (Leukotape/moleskin), elastic wrap, antiseptic, tweezers, meds</li>
+          <li>Headlamps ×3 + spare batteries</li>
+          <li>Sunscreen SPF 30+, SPF lip balm, bug spray</li>
+          <li>Offline maps, whistle, multi-tool, duct tape, paracord</li>
+          <li>Power bank, toiletries (all into the locker!)</li>
+          <li>Camp chairs, cards, quarters/card for showers</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MEALS ============ -->
+<section id="meals">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-no">07</span><h2>Meal plan</h2></div>
+    <div class="badges">
+      <span class="badge">Wheat-free</span>
+      <span class="badge">Dairy-free</span>
+      <span class="badge">Pescatarian</span>
+    </div>
+    <p class="lede">Cook fresh fish the first nights; shelf-stable tuna/salmon pouches carry the trail days. If anyone is celiac, swap in certified GF oats and tamari for soy sauce.</p>
+
+    <div class="meal-day">
+      <div class="d-no">Day 1</div>
+      <div class="meal"><span class="m-label">Lunch</span> — Salmon or tuna pouches with rice crackers, hummus, carrots, snap peas, fruit.</div>
+      <div class="meal"><span class="m-label">Dinner</span> — Foil-packet lemon-garlic salmon with zucchini, peppers, red onion, over instant rice.</div>
+    </div>
+    <div class="meal-day">
+      <div class="d-no">Day 2</div>
+      <div class="meal"><span class="m-label">Breakfast</span> — Oatmeal with dried fruit, walnuts, chia, cinnamon, coconut-milk powder; coffee.</div>
+      <div class="meal"><span class="m-label">Trail lunch</span> — Corn tortillas or rice cakes with sunflower-seed butter + banana; trail mix; salmon jerky; electrolyte tabs.</div>
+      <div class="meal"><span class="m-label">Dinner</span> — Fish tacos: seared mahi-mahi or pouched salmon, corn tortillas, cabbage-lime slaw, avocado, salsa; black beans.</div>
+    </div>
+    <div class="meal-day">
+      <div class="d-no">Day 3</div>
+      <div class="meal"><span class="m-label">Breakfast</span> — Scrambled eggs with peppers, onion, spinach in corn tortillas; avocado; fruit.</div>
+      <div class="meal"><span class="m-label">Pack-out lunch</span> — Cold rice-noodle salad (carrot, cucumber, edamame, sesame-tamari-lime) topped with a tuna pouch.</div>
+    </div>
+    <p style="margin-bottom:0"><strong>Snacks &amp; cooler:</strong> trail mix, dried &amp; fresh fruit, plantain chips, dark chocolate (check DF), roasted chickpeas, guacamole cups, sparkling water, DF marshmallows for the fire. Refill ice at the Village Store or Yosemite Valley Lodge.</p>
+  </div>
+</section>
+
+<!-- ============ GROCERY ============ -->
+<section id="grocery">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="titlewrap"><span class="sec-no">08</span><h2>Grocery list</h2></div>
+      <button class="printlink" onclick="printGrocery()">⎙ Print list</button>
+    </div>
+    <p class="lede">Everything the meal plan needs for three people, two nights, consolidated by store aisle. Tap an item to check it off as you shop.</p>
+    <div class="groc" id="grocery-groups">
+      <div class="groc-cat">
+        <h3>Produce</h3>
+        <ul>
+          <li><label><input type="checkbox"><span>Zucchini ×2</span></label></li>
+          <li><label><input type="checkbox"><span>Bell peppers ×4 (mixed colors)</span></label></li>
+          <li><label><input type="checkbox"><span>Red onion ×1, yellow onion ×1</span></label></li>
+          <li><label><input type="checkbox"><span>Garlic (1 head)</span></label></li>
+          <li><label><input type="checkbox"><span>Lemons ×2</span></label></li>
+          <li><label><input type="checkbox"><span>Limes ×4</span></label></li>
+          <li><label><input type="checkbox"><span>Avocados ×4</span></label></li>
+          <li><label><input type="checkbox"><span>Green cabbage (½ head) or slaw mix</span></label></li>
+          <li><label><input type="checkbox"><span>Cilantro (1 bunch)</span></label></li>
+          <li><label><input type="checkbox"><span>Baby spinach (small bag)</span></label></li>
+          <li><label><input type="checkbox"><span>Carrots (1 bag)</span></label></li>
+          <li><label><input type="checkbox"><span>Cucumber ×1</span></label></li>
+          <li><label><input type="checkbox"><span>Snap peas (1 bag)</span></label></li>
+          <li><label><input type="checkbox"><span>Bananas ×6</span></label></li>
+          <li><label><input type="checkbox"><span>Fresh fruit — apples/oranges/berries</span></label></li>
+        </ul>
+      </div>
+      <div class="groc-cat">
+        <h3>Fish &amp; proteins</h3>
+        <ul>
+          <li><label><input type="checkbox"><span>Fresh salmon fillets (~1 lb)</span></label></li>
+          <li><label><input type="checkbox"><span>Mahi-mahi fillets (~1 lb)</span></label></li>
+          <li><label><input type="checkbox"><span>Tuna pouches ×3–4</span></label></li>
+          <li><label><input type="checkbox"><span>Salmon pouches ×2–3</span></label></li>
+          <li><label><input type="checkbox"><span>Salmon jerky (1–2 bags)</span></label></li>
+          <li><label><input type="checkbox"><span>Eggs (½ dozen)</span></label></li>
+          <li><label><input type="checkbox"><span>Shelled edamame (frozen or fresh)</span></label></li>
+        </ul>
+      </div>
+      <div class="groc-cat">
+        <h3>Pantry &amp; dry goods</h3>
+        <ul>
+          <li><label><input type="checkbox"><span>Instant/microwave rice ×3 pouches</span></label></li>
+          <li><label><input type="checkbox"><span>Corn tortillas ×2 packs</span></label></li>
+          <li><label><input type="checkbox"><span>Rice crackers &amp; rice cakes</span></label></li>
+          <li><label><input type="checkbox"><span>Rice noodles (1 pack)</span></label></li>
+          <li><label><input type="checkbox"><span>Rolled oats (certified GF if celiac)</span></label></li>
+          <li><label><input type="checkbox"><span>Black beans ×1 can</span></label></li>
+          <li><label><input type="checkbox"><span>Hummus (1 tub)</span></label></li>
+          <li><label><input type="checkbox"><span>Sunflower-seed butter (1 jar)</span></label></li>
+          <li><label><input type="checkbox"><span>Salsa (1 jar) &amp; guacamole cups</span></label></li>
+          <li><label><input type="checkbox"><span>Trail mix, dried fruit, walnuts</span></label></li>
+          <li><label><input type="checkbox"><span>Chia seeds, coconut-milk powder</span></label></li>
+          <li><label><input type="checkbox"><span>Plantain chips, roasted chickpeas</span></label></li>
+          <li><label><input type="checkbox"><span>Dark chocolate (DF), DF marshmallows</span></label></li>
+        </ul>
+      </div>
+      <div class="groc-cat">
+        <h3>Oils, seasonings &amp; drinks</h3>
+        <ul>
+          <li><label><input type="checkbox"><span>Olive oil (small bottle)</span></label></li>
+          <li><label><input type="checkbox"><span>Toasted sesame oil (small)</span></label></li>
+          <li><label><input type="checkbox"><span>Tamari (GF) or soy sauce</span></label></li>
+          <li><label><input type="checkbox"><span>Salt, pepper, cinnamon</span></label></li>
+          <li><label><input type="checkbox"><span>Coffee + filters</span></label></li>
+          <li><label><input type="checkbox"><span>Sparkling water</span></label></li>
+          <li><label><input type="checkbox"><span>Electrolyte tabs</span></label></li>
+          <li><label><input type="checkbox"><span>Ice (buy in-park; refill day 2)</span></label></li>
+        </ul>
+      </div>
+    </div>
+    <p class="map-note">Buy perishables (fresh fish, eggs, avocados) as late as possible and freeze the fish — cook it on nights 1 &amp; 2. Pouched fish needs no cooler.</p>
+  </div>
+</section>
+
+<!-- ============ SAFETY ============ -->
+<section id="safety" style="border-bottom:none">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-no">09</span><h2>Guide's safety notes</h2></div>
+    <p class="lede">The WFR insists. In July the two things most likely to ruin a Yosemite trip are heat and the river — respect both.</p>
+    <div class="safety">
+      <div class="row"><span class="tag">Heat</span><p><b>Your #1 July hazard.</b> Hike at dawn, rest in shade midday, drink 3–4 L on big days, and eat salty snacks — water alone risks hyponatremia. The Upper Falls switchbacks generate first-aid calls for dehydration every summer.</p></div>
+      <div class="row"><span class="tag">Water</span><p><b>The Merced kills people every year.</b> Cold, deceptively strong current, polished granite near falls. Never wade above a fall or rapid; look downstream before entering; keep kids in arm's reach.</p></div>
+      <div class="row"><span class="tag">Bears</span><p><b>Locker latched, every time.</b> No food or scented items in tents or vehicles, day or night. A clean camp protects you and the bears.</p></div>
+      <div class="row info"><span class="tag">Reserve</span><p><b>Camp 4 is now reservation-only in summer.</b> Sites release on recreation.gov one week out at 7 AM Pacific, booked per person (~$10/night). Six people share each site — book all three together and set an alarm.</p></div>
+      <div class="row info"><span class="tag">Comms</span><p>Cell service in the Valley is spotty. Agree on meeting points and turnaround times before you split up, and download offline maps at camp.</p></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>Hike early · drink often · latch the locker · leave the granite better than you found it.</p>
+    <p>Base map © USGS The National Map · trail data via AllTrails &amp; NPS · verify current conditions at nps.gov/yose before you go.</p>
+  </div>
+</footer>
+
+<script>
+  /* ---------- live weather (Open-Meteo, no key required) ---------- */
+  (function loadWeather(){
+    const el = document.getElementById('wx-value');
+    const wmo = {
+      0:'Clear',1:'Mostly clear',2:'Partly cloudy',3:'Cloudy',
+      45:'Fog',48:'Icy fog',51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',
+      56:'Freezing drizzle',57:'Freezing drizzle',61:'Light rain',63:'Rain',65:'Heavy rain',
+      66:'Freezing rain',67:'Freezing rain',71:'Light snow',73:'Snow',75:'Heavy snow',
+      77:'Snow grains',80:'Light showers',81:'Showers',82:'Heavy showers',
+      85:'Snow showers',86:'Snow showers',95:'Thunderstorm',96:'T-storm + hail',99:'T-storm + hail'
+    };
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=37.742&longitude=-119.603'
+      + '&current=temperature_2m,weather_code&daily=temperature_2m_max'
+      + '&temperature_unit=fahrenheit&timezone=America%2FLos_Angeles';
+    fetch(url)
+      .then(r => { if(!r.ok) throw new Error(r.status); return r.json(); })
+      .then(d => {
+        const t = Math.round(d.current.temperature_2m);
+        const cond = wmo[d.current.weather_code] || '—';
+        const hi = d.daily && d.daily.temperature_2m_max ? Math.round(d.daily.temperature_2m_max[0]) : null;
+        el.textContent = t + '°F · ' + cond + (hi !== null ? ' ↑' + hi + '°' : '');
+      })
+      .catch(() => { el.textContent = 'Check nps.gov/yose'; });
+  })();
+
+  /* ---------- print helpers ---------- */
+  function printPartial(innerHTML, heading){
+    const w = window.open('', '_blank', 'width=800,height=900');
+    w.document.write(
+      '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + heading + ' · Camp 4</title><style>'
+      + 'body{font-family:Georgia,serif;color:#3A2F1E;max-width:720px;margin:24px auto;padding:0 24px;line-height:1.5}'
+      + 'h1{font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:.02em;font-size:22px;'
+      + 'border-bottom:2px solid #3A2F1E;padding-bottom:8px}'
+      + '.eyebrow{font-family:monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#8A6A3E}'
+      + 'h3{font-family:Arial,sans-serif;font-size:15px;margin:18px 0 6px}'
+      + 'ul{margin:0 0 6px;padding-left:20px}li{margin-bottom:5px;font-size:14px}'
+      + 'label{display:block}input{margin-right:8px}'
+      + '.cols,.groc{display:grid;grid-template-columns:1fr 1fr;gap:0 32px}'
+      + '.grouplist h3::before,.groc-cat h3::before{content:""}'
+      + '@media print{@page{margin:14mm}}'
+      + '</style></head><body>'
+      + '<div class="eyebrow">Camp 4 · Yosemite Valley · 3 people · 2 nights</div>'
+      + '<h1>' + heading + '</h1>' + innerHTML
+      + '</body></html>'
+    );
+    w.document.close();
+    w.focus();
+    setTimeout(function(){ w.print(); }, 350);
+  }
+  function printPacking(){ printPartial(document.getElementById('packing-cols').outerHTML, 'Packing List'); }
+  function printGrocery(){ printPartial(document.getElementById('grocery-groups').outerHTML, 'Grocery List'); }
+
+  const map = L.map('map', { scrollWheelZoom:true, zoomControl:true }).setView([37.7445, -119.585], 13);
+
+  L.tileLayer('https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'USGS The National Map: National Boundaries Dataset, 3DEP, GNIS, NHD',
+    maxZoom: 16, minZoom: 11
+  }).addTo(map);
+
+  const C = { camp:'#AE3A2B', trail:'#4C7A4A', river:'#2E6E7E', view:'#8A6A3E', svc:'#3A2F1E' };
+  function mk(lat,lng,color,title,html){
+    const m = L.circleMarker([lat,lng],{
+      radius:8, color:'rgba(0,0,0,.55)', weight:1.5, fillColor:color, fillOpacity:1
+    }).addTo(map);
+    m.bindPopup('<b>'+title+'</b><br>'+html);
+    return m;
+  }
+
+  // Base camp
+  mk(37.7423,-119.6031,C.camp,'Camp 4','Walk-in climbers\' camp · your base.<br>37.742°N 119.603°W · 4,000 ft');
+
+  // Trailheads
+  mk(37.7424,-119.6035,C.trail,'Upper Yosemite Fall TH','Trail starts <em>in</em> camp. To Columbia Rock 2 mi RT, to the top 7.2 mi RT.<br><a href="https://www.alltrails.com/trail/us/california/upper-yosemite-falls-trail" target="_blank" rel="noopener">AllTrails →</a>');
+  mk(37.7455,-119.5964,C.trail,'Lower Yosemite Fall TH','1-mi paved loop to the base footbridge.<br><a href="https://www.alltrails.com/poi/us/california/lower-yosemite-fall" target="_blank" rel="noopener">AllTrails →</a>');
+  mk(37.7327,-119.5583,C.trail,'Happy Isles TH','Start of the Mist Trail to Vernal & Nevada Falls. Free shuttle stop.<br><a href="https://www.alltrails.com/trail/us/california/vernal-and-nevada-falls-via-the-mist-trail" target="_blank" rel="noopener">AllTrails →</a>');
+
+  // Viewpoints / sights
+  mk(37.7492,-119.6006,C.view,'Columbia Rock','First big Valley + Half Dome view, ~1 mi up the Upper Falls trail.');
+  mk(37.7565,-119.5966,C.view,'Upper Yosemite Fall overlook','Platform at the brink of the 2,425-ft falls.');
+  mk(37.7274,-119.5432,C.view,'Vernal Fall','Top of the granite staircase; Emerald Pool just above.');
+  mk(37.7258,-119.5327,C.view,'Nevada Fall','594-ft fall with Liberty Cap behind. Turnaround for the long Mist Trail.');
+  mk(37.7341,-119.6377,C.view,'El Capitan','3,000-ft granite monolith — scan the wall for climbers.');
+  mk(37.7459,-119.5330,C.view,'Half Dome','The Valley\'s signature dome, seen from Mirror Lake and Sentinel Bridge.');
+  mk(37.7156,-119.6773,C.view,'Tunnel View','Classic Valley panorama — best at first light.');
+  mk(37.7443,-119.5872,C.view,'Sentinel Bridge','Half Dome mirrored in the Merced at golden hour.');
+
+  // River / swim
+  mk(37.7398,-119.6165,C.river,'Sentinel Beach','Sandy shallows, Yosemite Falls view. Prime float & wade spot.');
+  mk(37.7407,-119.6098,C.river,'Swinging Bridge','Calm, family-friendly Merced access on the Valley loop.');
+  mk(37.7314,-119.6304,C.river,'Cathedral Beach','Quieter downstream beach beneath El Capitan.');
+  mk(37.7480,-119.5528,C.river,'Mirror Lake / Tenaya Creek','Cold clear pools; easy shaded loop.<br><a href="https://www.alltrails.com/trail/us/california/mirror-lake-loop--2" target="_blank" rel="noopener">AllTrails →</a>');
+
+  // Services
+  mk(37.7434,-119.5972,C.svc,'Yosemite Valley Lodge','Store, food, bike rentals — next to camp.');
+  mk(37.7386,-119.5717,C.svc,'Half Dome Village','Pay showers & groceries.');
+
+  // simple route polylines (illustrative)
+  const routeStyle = {color:'#AE3A2B', weight:3, opacity:.75, dashArray:'6 5'};
+  L.polyline([[37.7424,-119.6035],[37.7492,-119.6006],[37.7565,-119.5966]], routeStyle)
+    .bindPopup('Upper Yosemite Fall Trail').addTo(map);
+  L.polyline([[37.7327,-119.5583],[37.7274,-119.5432],[37.7258,-119.5327]], {color:'#2E6E7E',weight:3,opacity:.75,dashArray:'6 5'})
+    .bindPopup('Mist Trail → Vernal & Nevada Falls').addTo(map);
+
+  map.fitBounds(L.latLngBounds([[37.712,-119.685],[37.760,-119.528]]), {padding:[20,20]});
+</script>
+</body>
+</html>
