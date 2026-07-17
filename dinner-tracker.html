@@ -105,6 +105,11 @@
   #authGate button:hover{background:var(--green-light);}
   #authGate .gate-error{color:var(--urgent);font-size:12.5px;min-height:18px;margin-top:8px;}
   .signout-btn{background:rgba(255,255,255,.12)!important;}
+  /* Undo toast */
+  #undo-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#1b3a2b;color:#fff;border-radius:10px;padding:11px 16px;display:flex;align-items:center;gap:12px;font-size:13.5px;box-shadow:0 4px 18px rgba(0,0,0,.22);transition:transform .25s ease,opacity .25s ease;opacity:0;pointer-events:none;z-index:9999;white-space:nowrap;}
+  #undo-toast.visible{transform:translateX(-50%) translateY(0);opacity:1;pointer-events:auto;}
+  #undo-toast button{background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:6px;padding:5px 12px;font-size:12.5px;font-weight:600;cursor:pointer;}
+  #undo-toast button:hover{background:rgba(255,255,255,.32);}
 </style>
 </head>
 <body>
@@ -1056,6 +1061,8 @@ let matchMode = "overlap";
 let groceryDays = 7;
 let groceryChecked = new Set();
 let calViewOn = false;
+let lastAction = null;
+let undoTimer = null;
 let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth();
 
@@ -1177,19 +1184,41 @@ function renderIngredientsAndSteps(r){
   return `<ul class="ing-list">${ing}</ul><ol class="steps">${steps}</ol>`;
 }
 
+function showUndoToast(label){
+  if (undoTimer) clearTimeout(undoTimer);
+  const t = document.getElementById("undo-toast");
+  if (t){ t.querySelector(".toast-label").textContent = label; t.classList.add("visible"); }
+  undoTimer = setTimeout(dismissUndoToast, 5000);
+}
+function dismissUndoToast(){
+  const t = document.getElementById("undo-toast");
+  if (t) t.classList.remove("visible");
+  lastAction = null;
+  undoTimer = null;
+}
+function undoLast(){
+  if (!lastAction) return;
+  const l = state.log.find(x => x.id === lastAction.logId);
+  if (l){ l.status = lastAction.previousStatus; render(); queueSave(); }
+  dismissUndoToast();
+}
 function markCooked(logId){
   const l = state.log.find(x => x.id === logId);
   if (!l) return;
+  lastAction = {logId, previousStatus: l.status};
   l.status = "cooked";
   render();
   queueSave();
+  showUndoToast("Marked as cooked");
 }
 function markSkipped(logId){
   const l = state.log.find(x => x.id === logId);
   if (!l) return;
+  lastAction = {logId, previousStatus: l.status};
   l.status = "skipped";
   render();
   queueSave();
+  showUndoToast("Skipped");
 }
 function editNote(logId){
   const l = state.log.find(x => x.id === logId);
@@ -1758,5 +1787,6 @@ onAuthStateChanged(auth, (user) => {
 });
 </script>
 
+<div id="undo-toast"><span class="toast-label"></span><button onclick="undoLast()">Undo</button></div>
 </body>
 </html>
