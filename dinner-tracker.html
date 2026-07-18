@@ -105,6 +105,16 @@
   #authGate button:hover{background:var(--green-light);}
   #authGate .gate-error{color:var(--urgent);font-size:12.5px;min-height:18px;margin-top:8px;}
   .signout-btn{background:rgba(255,255,255,.12)!important;}
+  /* Ingredient substitution popup */
+  #ing-sub-popup{position:fixed;background:#fff;border-radius:14px;box-shadow:0 6px 24px rgba(0,0,0,.22),0 1px 4px rgba(0,0,0,.1);padding:7px 5px;z-index:9998;min-width:180px;max-width:270px;display:none;}
+  #ing-sub-popup.visible{display:block;animation:sub-pop-in .15s ease;}
+  @keyframes sub-pop-in{from{opacity:0;transform:scale(.9) translateY(4px)}to{opacity:1;transform:scale(1) translateY(0)}}
+  .sub-popup-label{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:2px 10px 6px;}
+  .sub-opt{display:block;width:100%;text-align:left;background:none;border:none;border-radius:9px;padding:8px 12px;font-size:13px;cursor:pointer;color:var(--text);font-family:inherit;}
+  .sub-opt:hover,.sub-opt:active{background:var(--green);color:#fff;}
+  .sub-opt.cancel{color:var(--muted);font-size:12px;}
+  .ing-list li[data-rid]{cursor:pointer;border-radius:4px;padding-left:2px;transition:background .1s;}
+  .ing-list li[data-rid]:hover{background:#f0f7f1;color:var(--green);}
   /* Grocery grid */
   .gl-toggles{display:flex;gap:6px;align-items:center;}
   .gl-toggle{font-size:11.5px;padding:5px 11px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:#fff;color:var(--muted);}
@@ -1062,6 +1072,57 @@ const SEED_LOG = [
 const TYPE_LABELS = {protein:"Protein", legume:"Legume/Bean", vegetable:"Vegetable", fruit:"Fruit",
   grain:"Grain", condiment:"Condiment/Spice", fermented:"Fermented", other:"Other"};
 
+const SUBSTITUTIONS = {
+  // Proteins
+  "firm tofu":["Tempeh (crumbled)","Chickpeas","Edamame"],
+  "shrimp":["Sea scallops","Firm white fish","Tempeh"],
+  "salmon fillets":["Mahi mahi fillets","Cod fillets","Tuna steak"],
+  "mahi mahi fillets":["Salmon fillets","Cod fillets","Halibut"],
+  "eggs":["Silken tofu (scrambled)","Chickpea flour scramble"],
+  // Vegetables
+  "broccoli":["Cauliflower","Green beans","Broccolini"],
+  "kale":["Baby spinach","Swiss chard","Bok choy"],
+  "baby spinach":["Kale","Swiss chard","Arugula"],
+  "sweet potato":["Butternut squash","Carrot","Yukon gold potato"],
+  "bell pepper":["Poblano pepper","Zucchini","Tomato"],
+  "red bell pepper":["Orange bell pepper","Poblano","Cherry tomatoes"],
+  "zucchini":["Yellow squash","Eggplant","Green beans"],
+  "zucchini or summer squash":["Eggplant","Asparagus","Green beans"],
+  "eggplant":["Zucchini","Portobello mushrooms","Yellow squash"],
+  "corn on the cob":["Frozen corn kernels (1½ cups)","Edamame","Peas"],
+  "corn kernels":["Peas","Edamame","Diced bell pepper"],
+  "snap peas":["Snow peas","Green beans","Asparagus"],
+  "cucumber":["Jicama","Celery","Zucchini (raw)"],
+  "carrot":["Parsnip","Daikon radish","Celery"],
+  "salad mix / mixed greens":["Baby spinach","Arugula","Butter lettuce"],
+  "green cabbage":["Napa cabbage","Shredded kale","Shredded bok choy"],
+  // Legumes
+  "black beans":["Pinto beans","Kidney beans","Chickpeas"],
+  "chickpeas":["White beans","Black beans","Green lentils"],
+  "green lentils":["Red lentils","Brown lentils","Chickpeas"],
+  "edamame, shelled":["Peas","Fava beans","Lima beans"],
+  "edamame or lima beans, shelled":["Peas","Fava beans","Edamame"],
+  "white beans (cannellini)":["Great northern beans","Butter beans","Chickpeas"],
+  // Grains
+  "white rice":["Brown rice","Cauliflower rice","Quinoa"],
+  "brown rice":["White rice","Quinoa","Millet"],
+  "quinoa":["Brown rice","White rice","Millet"],
+  "gf rice noodles":["Kelp noodles","Zucchini noodles","Sweet potato glass noodles"],
+  "gf corn tortillas":["Lettuce wraps","Rice paper"],
+  // Condiments
+  "gf tamari":["Coconut aminos","Fish sauce (smaller amount)"],
+  "tahini":["Sunflower seed butter","Almond butter","Cashew butter"],
+  "coconut milk":["Cashew cream","Oat milk","Full-fat almond milk"],
+  "peanut butter":["Almond butter","Sunflower seed butter","Tahini"],
+  "chipotle in adobo":["1 tsp smoked paprika + pinch cayenne","Ancho chili powder"],
+  "curry powder":["Garam masala + turmeric","Thai red curry paste (GF)"],
+  // Fruit
+  "avocado":["Extra olive oil drizzle","Hummus"],
+  "mango":["Pineapple","Peach","Papaya"],
+  "lemon":["Lime","White wine vinegar"],
+  "lime":["Lemon","Rice vinegar"],
+};
+
 /* =========================================================
    STATE
    ========================================================= */
@@ -1194,8 +1255,12 @@ function renderMealCard(l, r, diff){
 }
 
 function renderIngredientsAndSteps(r){
-  const ing = r.ingredients.map(i =>
-    `<li class="type-${i.type}">${i.name} – ${i.qty}</li>`).join("");
+  const ing = r.ingredients.map((i, idx) => {
+    const hasSubs = !!SUBSTITUTIONS[i.name.toLowerCase().trim()];
+    const hint = hasSubs ? ' title="Hold / hover to swap"' : '';
+    const dataAttr = hasSubs ? ` data-rid="${r.id}" data-idx="${idx}"` : '';
+    return `<li class="type-${i.type}"${dataAttr}${hint}>${i.name} – ${i.qty}</li>`;
+  }).join("");
   const steps = r.steps.map(s => `<li>${s}</li>`).join("");
   return `<ul class="ing-list">${ing}</ul><ol class="steps">${steps}</ol>`;
 }
@@ -1217,6 +1282,51 @@ function undoLast(){
   const l = state.log.find(x => x.id === lastAction.logId);
   if (l){ l.status = lastAction.previousStatus; render(); queueSave(); }
   dismissUndoToast();
+}
+function showSubPopup(li, touch){
+  const rid = li.dataset.rid;
+  const idx = parseInt(li.dataset.idx);
+  const r = state.recipes.find(x => x.id === rid);
+  if (!r) return;
+  const ing = r.ingredients[idx];
+  if (!ing) return;
+  const alts = SUBSTITUTIONS[ing.name.toLowerCase().trim()];
+  if (!alts || !alts.length) return;
+  const popup = document.getElementById("ing-sub-popup");
+  if (!popup) return;
+  popup.innerHTML = `<div class="sub-popup-label">Swap for…</div>` +
+    alts.map(a => {
+      const safe = a.replace(/\\/g,"\\\\").replace(/'/g,"\\'");
+      return `<button class="sub-opt" onclick="swapIngredient('${rid}',${idx},'${safe}');hideSubPopup()">${a}</button>`;
+    }).join("") +
+    `<button class="sub-opt cancel" onclick="hideSubPopup()">✕ Cancel</button>`;
+  popup.classList.add("visible");
+  const pw = popup.offsetWidth, ph = popup.offsetHeight;
+  let left, top;
+  if (touch){
+    left = touch.clientX - pw/2;
+    top = touch.clientY - ph - 14;
+  } else {
+    const rect = li.getBoundingClientRect();
+    left = rect.left;
+    top = rect.top - ph - 8;
+    if (top < 8) top = rect.bottom + 8;
+  }
+  left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
+  top = Math.max(8, top);
+  popup.style.left = left + "px";
+  popup.style.top = top + "px";
+}
+function hideSubPopup(){
+  const p = document.getElementById("ing-sub-popup");
+  if (p) p.classList.remove("visible");
+}
+function swapIngredient(rid, idx, newName){
+  const r = state.recipes.find(x => x.id === rid);
+  if (!r || !r.ingredients[idx]) return;
+  r.ingredients[idx] = {...r.ingredients[idx], name: newName};
+  render();
+  queueSave();
 }
 function markCooked(logId){
   const l = state.log.find(x => x.id === logId);
@@ -1810,6 +1920,40 @@ form.addEventListener("submit", async function(e){
   }
 });
 
+// Ingredient substitution event wiring
+(function(){
+  let hoverTimer = null, longTimer = null;
+  function ingLi(t){ return t && t.closest && t.closest(".ing-list li[data-rid]"); }
+  document.addEventListener("mouseover", e => {
+    const li = ingLi(e.target); if (!li) return;
+    clearTimeout(hoverTimer);
+    hoverTimer = setTimeout(() => showSubPopup(li, null), 350);
+  });
+  document.addEventListener("mouseout", e => {
+    const li = ingLi(e.target); if (!li) return;
+    clearTimeout(hoverTimer);
+    hoverTimer = setTimeout(hideSubPopup, 200);
+  });
+  document.addEventListener("touchstart", e => {
+    const li = ingLi(e.target); if (!li) return;
+    const touch = e.touches[0];
+    longTimer = setTimeout(() => { showSubPopup(li, touch); }, 500);
+  }, {passive:true});
+  document.addEventListener("touchend",  () => clearTimeout(longTimer), {passive:true});
+  document.addEventListener("touchmove", () => clearTimeout(longTimer), {passive:true});
+  document.addEventListener("click", e => {
+    const p = document.getElementById("ing-sub-popup");
+    if (p && !p.contains(e.target) && !ingLi(e.target)) hideSubPopup();
+  });
+  // Keep popup open while hovering it
+  window.addEventListener("load", () => {
+    const p = document.getElementById("ing-sub-popup");
+    if (!p) return;
+    p.addEventListener("mouseenter", () => clearTimeout(hoverTimer));
+    p.addEventListener("mouseleave", () => { hoverTimer = setTimeout(hideSubPopup, 200); });
+  });
+})();
+
 onAuthStateChanged(auth, (user) => {
   window.__fb.currentUser = user;
   if (user) {
@@ -1827,6 +1971,7 @@ onAuthStateChanged(auth, (user) => {
 });
 </script>
 
+<div id="ing-sub-popup"></div>
 <div id="undo-toast"><span class="toast-label"></span><button onclick="undoLast()">Undo</button></div>
 </body>
 </html>
