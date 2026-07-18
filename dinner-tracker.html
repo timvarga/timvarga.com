@@ -5,45 +5,73 @@
 <title>Dinner Tracker</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --green:#1b3a2b; --green-light:#2d5240; --cream:#f3f3ec; --brown:#7a3b12;
-    --bg:#fafaf6; --card:#ffffff; --border:#dcdcd2; --text:#262622; --muted:#6b6b62;
-    --urgent:#b3441f; --soon:#b8860b; --fine:#3b7a4a;
+    --green:#2d4a35; --green-light:#3d5f45; --cream:#faf7f0; --brown:#8a4a1a;
+    --bg:#f2ede4; --card:#ffffff; --border:#e2ddd4; --text:#1c1c1e; --muted:#78736a;
+    --urgent:#b3441f; --soon:#c4882a; --fine:#3b7a4a;
+    --saffron:#c4882a;
+    --serif:'Fraunces',Georgia,serif;
+    --sans:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+    --shadow:0 1px 3px rgba(44,35,20,.05),0 4px 14px rgba(44,35,20,.07);
+    --shadow-hover:0 2px 6px rgba(44,35,20,.08),0 8px 24px rgba(44,35,20,.12);
+    --radius:12px;
   }
   *{box-sizing:border-box;}
-  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);}
-  header{background:var(--green);color:#fff;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
-  header h1{font-size:18px;margin:0;font-weight:700;}
-  header .sub{font-size:11.5px;opacity:.8;margin-top:2px;}
-  .iobtns{display:flex;gap:8px;}
-  .iobtns button{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:6px;padding:7px 12px;font-size:12.5px;cursor:pointer;}
-  .iobtns button:hover{background:rgba(255,255,255,.22);}
-  nav{display:flex;background:var(--green-light);overflow-x:auto;}
-  nav button{flex:1;min-width:80px;background:none;border:none;color:#fff;opacity:.75;padding:9px 6px;font-size:12px;cursor:pointer;border-bottom:3px solid transparent;white-space:normal;text-align:center;line-height:1.3;}
-  nav button.active{opacity:1;border-bottom-color:#e8c468;font-weight:600;}
-  main{max-width:980px;margin:0 auto;padding:16px 14px 60px;}
-  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:12px;}
-  .panel-title{font-size:15px;font-weight:700;color:var(--green);margin:4px 0 10px;}
-  .meal-row{display:flex;gap:12px;align-items:flex-start;}
-  .meal-date{min-width:64px;text-align:center;}
-  .meal-date .d{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;}
-  .meal-date .n{font-size:20px;font-weight:700;color:var(--green);}
-  .meal-body{flex:1;}
-  .meal-title{font-weight:700;font-size:14.5px;color:var(--text);}
-  .badge{display:inline-block;font-size:10.5px;padding:2px 7px;border-radius:20px;font-weight:600;margin-left:6px;vertical-align:middle;}
-  .badge.urgent{background:#fbe3da;color:var(--urgent);}
-  .badge.soon{background:#fbf0d4;color:var(--soon);}
-  .badge.fine{background:#dff0e1;color:var(--fine);}
-  .badge.cooked{background:#e2e2da;color:var(--muted);}
-  .meal-meta{font-size:12px;color:var(--muted);margin-top:2px;}
-  .meal-note{font-size:12.5px;color:var(--brown);margin-top:5px;background:#fbf4ec;border-radius:6px;padding:6px 9px;}
-  .row-actions{display:flex;gap:8px;margin-top:8px;}
-  .row-actions button{font-size:11.5px;border:1px solid var(--border);background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;}
+  body{margin:0;font-family:var(--sans);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;}
+  header{background:var(--green);color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+  header h1{font-size:19px;margin:0;font-weight:600;font-family:var(--serif);letter-spacing:.01em;}
+  header .sub{font-size:11px;opacity:.6;margin-top:2px;letter-spacing:.03em;}
+  .iobtns{display:flex;gap:7px;}
+  .iobtns button{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:7px;padding:7px 13px;font-size:12px;cursor:pointer;font-family:var(--sans);font-weight:500;transition:background .15s;}
+  .iobtns button:hover{background:rgba(255,255,255,.2);}
+  nav{display:flex;background:var(--green-light);overflow-x:auto;gap:0;}
+  nav button{flex:1;min-width:80px;background:none;border:none;color:rgba(255,255,255,.65);padding:10px 6px;font-size:11.5px;cursor:pointer;border-bottom:2.5px solid transparent;white-space:normal;text-align:center;line-height:1.35;font-family:var(--sans);font-weight:500;transition:color .15s;}
+  nav button.active{color:#fff;border-bottom-color:#e8c468;font-weight:600;}
+  nav button:hover:not(.active){color:rgba(255,255,255,.9);}
+  main{max-width:960px;margin:0 auto;padding:20px 16px 80px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:14px;box-shadow:var(--shadow);transition:box-shadow .2s ease;position:relative;}
+  .card:hover{box-shadow:var(--shadow-hover);}
+  /* Cuisine accent — colored left border on meal cards */
+  .meal-card{border-left:4px solid var(--border);padding-left:16px;}
+  .meal-card[data-cuisine="Mediterranean"]{border-left-color:#c4882a;}
+  .meal-card[data-cuisine="Middle Eastern"]{border-left-color:#b87038;}
+  .meal-card[data-cuisine="Asian"],.meal-card[data-cuisine="Pan-Asian"]{border-left-color:#4a7a8a;}
+  .meal-card[data-cuisine="Japanese"]{border-left-color:#5a6a9a;}
+  .meal-card[data-cuisine="Korean"]{border-left-color:#7a4a8a;}
+  .meal-card[data-cuisine="Thai"],.meal-card[data-cuisine="Southeast Asian"]{border-left-color:#6a8a3a;}
+  .meal-card[data-cuisine="Indian"]{border-left-color:#c47028;}
+  .meal-card[data-cuisine="Mexican"],.meal-card[data-cuisine="Tex-Mex"]{border-left-color:#a83828;}
+  .meal-card[data-cuisine="American"]{border-left-color:#4a6a5a;}
+  .meal-card[data-cuisine="Global"],.meal-card[data-cuisine="Fusion"]{border-left-color:#6a5a8a;}
+  .panel-title{font-size:16px;font-weight:600;color:var(--green);margin:4px 0 14px;font-family:var(--serif);}
+  .meal-row{display:flex;gap:14px;align-items:flex-start;}
+  .meal-date{min-width:48px;text-align:center;padding-top:2px;}
+  .meal-date .d{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;font-weight:600;}
+  .meal-date .n{font-size:36px;font-weight:300;color:var(--green);font-family:var(--serif);line-height:1;letter-spacing:-1.5px;}
+  .meal-body{flex:1;min-width:0;}
+  .meal-title{font-weight:600;font-size:16px;color:var(--text);font-family:var(--serif);line-height:1.25;}
+  .badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;font-weight:600;margin-left:7px;vertical-align:middle;letter-spacing:.03em;}
+  .badge.urgent{background:#fbe3da;color:#922210;}
+  .badge.soon{background:#fdf0d8;color:#8a5510;}
+  .badge.fine{background:#dff0e2;color:#235a30;}
+  .badge.cooked{background:#eaeae2;color:#6a6a58;}
+  .meal-meta{font-size:11.5px;color:var(--muted);margin-top:4px;letter-spacing:.01em;}
+  .meal-note{font-size:12.5px;color:var(--brown);margin-top:6px;background:#fdf5ec;border-radius:8px;padding:7px 11px;border-left:3px solid #e8c888;}
+  .row-actions{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap;}
+  .row-actions button{font-size:12px;border:1px solid var(--border);background:var(--card);border-radius:7px;padding:6px 13px;cursor:pointer;font-weight:500;font-family:var(--sans);transition:all .15s;color:var(--text);}
   .row-actions button.primary{background:var(--green);color:#fff;border-color:var(--green);}
-  .row-actions button:hover{filter:brightness(0.97);}
-  details{margin-top:8px;}
-  summary{cursor:pointer;font-size:12.5px;color:var(--green);font-weight:600;}
+  .row-actions button:hover:not(.primary){background:var(--cream);border-color:var(--green);color:var(--green);}
+  .row-actions button.primary:hover{background:var(--green-light);}
+  details{margin-top:10px;}
+  details[open] summary{color:var(--green);}
+  summary{cursor:pointer;font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.06em;text-transform:uppercase;user-select:none;transition:color .15s;list-style:none;display:flex;align-items:center;gap:5px;}
+  summary::-webkit-details-marker{display:none;}
+  summary::before{content:'›';font-size:14px;transition:transform .2s;display:inline-block;}
+  details[open] summary::before{transform:rotate(90deg);}
   .ing-list{margin:6px 0 4px;border:0.5px solid var(--border);border-radius:8px;overflow:hidden;font-size:13px;}
   .ing-b-row{position:relative;overflow:hidden;border-bottom:0.5px solid var(--border);}
   .ing-b-row:last-of-type{border-bottom:none;}
@@ -72,12 +100,12 @@
   .step-rm-x{flex-shrink:0;margin-top:1px;}
   .steps{margin:8px 0 0;padding-left:18px;font-size:13px;}
   .steps li{margin-bottom:5px;line-height:1.4;}
-  .tag{display:inline-block;font-size:10.5px;background:var(--cream);color:var(--green);border-radius:5px;padding:2px 7px;margin:0 4px 4px 0;}
+  .tag{display:inline-block;font-size:10px;background:var(--cream);color:var(--green);border-radius:5px;padding:3px 8px;margin:0 4px 5px 0;font-weight:500;letter-spacing:.02em;border:1px solid var(--border);}
   input[type=text],input[type=date],input[type=number],select,textarea{font-size:13px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;width:100%;font-family:inherit;}
   label{font-size:12px;color:var(--muted);display:block;margin:8px 0 3px;}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
   .recipe-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;}
-  .recipe-card h3{font-size:14px;margin:0 0 4px;color:var(--green);}
+  .recipe-card h3{font-size:16px;margin:0 0 5px;color:var(--green);font-family:var(--serif);font-weight:600;line-height:1.2;}
   .search-bar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
   .search-bar input{flex:1;min-width:160px;}
   .pill-toggle{display:inline-flex;border:1px solid var(--border);border-radius:7px;overflow:hidden;margin-bottom:10px;}
@@ -89,8 +117,8 @@
   .match-bar{height:6px;border-radius:4px;background:var(--cream);overflow:hidden;margin-top:6px;}
   .match-fill{height:100%;background:var(--fine);}
   .empty{color:var(--muted);font-size:13px;text-align:center;padding:30px 10px;}
-  .footer-note{font-size:11px;color:var(--muted);text-align:center;margin-top:24px;}
-  .save-banner{background:#fbf0d4;border:1px solid #e8c468;border-radius:8px;padding:10px 14px;font-size:12.5px;margin-bottom:14px;color:#5a4317;}
+  .footer-note{font-size:11px;color:var(--muted);text-align:center;margin-top:28px;opacity:.7;letter-spacing:.03em;}
+  .save-banner{background:var(--cream);border:1px solid var(--border);border-radius:10px;padding:10px 16px;font-size:12px;margin-bottom:18px;color:var(--muted);}
   textarea{min-height:50px;resize:vertical;}
 
   /* ---- Calendar view ---- */
@@ -119,11 +147,11 @@
 
   /* ---- Login gate ---- */
   #authGate{position:fixed;inset:0;background:var(--green);display:flex;align-items:center;justify-content:center;z-index:999;padding:20px;}
-  #authGate .gate-box{background:#fff;border-radius:12px;padding:28px 24px;max-width:320px;width:100%;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.25);}
-  #authGate h2{margin:0 0 4px;color:var(--green);font-size:18px;}
-  #authGate p{margin:0 0 16px;color:var(--muted);font-size:13px;}
+  #authGate .gate-box{background:#fff;border-radius:16px;padding:32px 28px;max-width:320px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+  #authGate h2{margin:0 0 5px;color:var(--green);font-size:22px;font-family:var(--serif);font-weight:600;}
+  #authGate p{margin:0 0 20px;color:var(--muted);font-size:13px;}
   #authGate input{text-align:center;font-size:15px;margin-bottom:10px;}
-  #authGate button{width:100%;background:var(--green);color:#fff;border:none;border-radius:6px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;}
+  #authGate button{width:100%;background:var(--green);color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--sans);transition:background .15s;}
   #authGate button:hover{background:var(--green-light);}
   #authGate .gate-error{color:var(--urgent);font-size:12.5px;min-height:18px;margin-top:8px;}
   .signout-btn{background:rgba(255,255,255,.12)!important;}
@@ -136,8 +164,8 @@
   .sub-opt:hover,.sub-opt:active{background:var(--green);color:#fff;}
   .sub-opt.cancel{color:var(--muted);font-size:12px;}
   /* Scrubable numbers */
-  .scrub-num{display:inline-block;color:var(--green);font-weight:700;border-bottom:1.5px dashed var(--green);cursor:ew-resize;padding:0 2px;user-select:none;-webkit-user-select:none;border-radius:3px;transition:background .1s;}
-  .scrub-num:hover,.scrub-num.scrub-active{background:#e8f5ec;}
+  .scrub-num{display:inline-block;color:var(--green);font-weight:600;font-family:var(--serif);border-bottom:1.5px dashed var(--green);cursor:ew-resize;padding:0 2px;user-select:none;-webkit-user-select:none;border-radius:3px;transition:background .1s;}
+  .scrub-num:hover,.scrub-num.scrub-active{background:#e4f0e8;}
   /* Grocery grid */
   .gl-toggles{display:flex;gap:6px;align-items:center;}
   .gl-toggle{font-size:11.5px;padding:5px 11px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:#fff;color:var(--muted);}
@@ -1287,7 +1315,7 @@ function renderMealCard(l, r, diff){
   if (l.status === "cooked") badge = '<span class="badge cooked">Cooked</span>';
   else if (diff !== null) badge = urgencyBadge(diff);
 
-  return `<div class="card">
+  return `<div class="card meal-card" data-cuisine="${r.cuisine}">
     <div class="meal-row">
       <div class="meal-date"><div class="d">${dayName}</div><div class="n">${dayNum}</div></div>
       <div class="meal-body">
