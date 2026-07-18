@@ -1990,7 +1990,6 @@ function render(){
   else if (activeTab === "addrecipe") body = renderAddRecipe();
 
   app.innerHTML = `
-    <div class="save-banner">Synced automatically to the cloud as you make changes — your phone and computer always show the same data. Use <strong>Export Backup</strong> any time you want an offline copy.</div>
     ${body}
     <div class="footer-note">Dinner Tracker · synced live via Firebase.</div>`;
   // Reopen any details that were open before re-render
