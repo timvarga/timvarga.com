@@ -44,10 +44,29 @@
   .row-actions button:hover{filter:brightness(0.97);}
   details{margin-top:8px;}
   summary{cursor:pointer;font-size:12.5px;color:var(--green);font-weight:600;}
-  .ing-list{margin:8px 0 0;padding-left:18px;font-size:13px;}
-  .ing-list li{margin-bottom:2px;}
-  .ing-list li.type-protein{color:#6b2d2d;}
-  .ing-list li.type-legume{color:#5a4317;}
+  .ing-list{margin:6px 0 4px;border:0.5px solid var(--border);border-radius:8px;overflow:hidden;font-size:13px;}
+  .ing-b-row{position:relative;overflow:hidden;border-bottom:0.5px solid var(--border);}
+  .ing-b-row:last-of-type{border-bottom:none;}
+  .ing-b-rm{position:absolute;right:0;top:0;height:100%;display:flex;align-items:stretch;z-index:0;}
+  .ing-b-rm button{background:#b3441f;color:#fff;border:none;padding:0 18px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .ing-b-inner{display:flex;align-items:center;gap:9px;padding:7px 12px;background:var(--card);position:relative;z-index:1;transition:transform .2s ease;}
+  .ing-b-row.swiped .ing-b-inner{transform:translateX(-80px);}
+  .ing-b-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;background:var(--border);}
+  .ing-b-dot.type-protein{background:#b3441f;}.ing-b-dot.type-vegetable{background:#3b7a4a;}.ing-b-dot.type-fruit{background:#c47a2b;}.ing-b-dot.type-legume{background:#7a5c17;}.ing-b-dot.type-grain{background:#8a7340;}.ing-b-dot.type-condiment{background:#9a9a8a;}.ing-b-dot.type-fermented{background:#6b4a7a;}
+  .ing-b-name{font-size:13px;color:var(--text);flex:1;min-width:0;}
+  .ing-b-name[data-rid]{cursor:pointer;}
+  .ing-b-name[data-rid]:hover{color:var(--green);}
+  .ing-b-qty{font-size:12px;color:var(--muted);white-space:nowrap;flex-shrink:0;}
+  .ing-b-x{width:22px;height:22px;border-radius:50%;border:1px solid var(--border);background:var(--bg);color:var(--muted);font-size:15px;line-height:22px;text-align:center;cursor:pointer;flex-shrink:0;opacity:0;transition:opacity .15s;padding:0;font-family:inherit;}
+  .ing-b-row:hover .ing-b-x{opacity:1;}
+  .ing-add-bar{border-top:0.5px solid var(--border);}
+  .ing-add-bar button{width:100%;background:none;border:none;padding:8px 14px;font-size:12.5px;color:var(--green);font-weight:600;cursor:pointer;text-align:left;font-family:inherit;}
+  .ing-add-bar button:hover{background:var(--cream);}
+  .ing-add-form{padding:10px 12px;background:var(--cream);display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+  .ing-add-form input,.ing-add-form select{font-size:12px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;background:#fff;color:var(--text);font-family:inherit;}
+  .ing-add-form .add-name-in{flex:1;min-width:120px;}.ing-add-form .add-qty-in{width:80px;}
+  .btn-sm-green{background:var(--green);color:#fff;border:none;border-radius:6px;font-size:12px;padding:5px 11px;cursor:pointer;font-family:inherit;font-weight:600;}
+  .btn-sm-muted{background:none;border:none;color:var(--muted);font-size:12px;padding:5px 8px;cursor:pointer;font-family:inherit;}
   .steps{margin:8px 0 0;padding-left:18px;font-size:13px;}
   .steps li{margin-bottom:5px;line-height:1.4;}
   .tag{display:inline-block;font-size:10.5px;background:var(--cream);color:var(--green);border-radius:5px;padding:2px 7px;margin:0 4px 4px 0;}
@@ -113,8 +132,9 @@
   .sub-opt{display:block;width:100%;text-align:left;background:none;border:none;border-radius:9px;padding:8px 12px;font-size:13px;cursor:pointer;color:var(--text);font-family:inherit;}
   .sub-opt:hover,.sub-opt:active{background:var(--green);color:#fff;}
   .sub-opt.cancel{color:var(--muted);font-size:12px;}
-  .ing-list li[data-rid]{cursor:pointer;border-radius:4px;padding-left:2px;transition:background .1s;}
-  .ing-list li[data-rid]:hover{background:#f0f7f1;color:var(--green);}
+  /* Scrubable numbers */
+  .scrub-num{display:inline-block;color:var(--green);font-weight:700;border-bottom:1.5px dashed var(--green);cursor:ew-resize;padding:0 2px;user-select:none;-webkit-user-select:none;border-radius:3px;transition:background .1s;}
+  .scrub-num:hover,.scrub-num.scrub-active{background:#e8f5ec;}
   /* Grocery grid */
   .gl-toggles{display:flex;gap:6px;align-items:center;}
   .gl-toggle{font-size:11.5px;padding:5px 11px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:#fff;color:var(--muted);}
@@ -1124,6 +1144,37 @@ const SUBSTITUTIONS = {
 };
 
 /* =========================================================
+   QUANTITY HELPERS
+   ========================================================= */
+const QTY_FRACS = {'½':0.5,'⅓':1/3,'⅔':2/3,'¼':0.25,'¾':0.75,'⅛':0.125,'⅜':0.375,'⅝':0.625,'⅞':0.875};
+const QTY_FRAC_DISP = [[1/8,'⅛'],[1/4,'¼'],[1/3,'⅓'],[3/8,'⅜'],[1/2,'½'],[5/8,'⅝'],[2/3,'⅔'],[3/4,'¾'],[7/8,'⅞']];
+function parseQty(str){
+  if(!str) return {num:null,unit:''};
+  const s = str.trim();
+  let m = s.match(/^(\d+)([½⅓⅔¼¾⅛⅜⅝⅞])?(.*)/);
+  if(m && (m[1]||m[2])){
+    const whole = m[1] ? parseInt(m[1]) : 0;
+    const frac  = m[2] ? (QTY_FRACS[m[2]]||0) : 0;
+    const rest  = m[3]||'';
+    if(rest.startsWith('–')) return {num:null,unit:s}; // range like "1–2 tbsp"
+    return {num:whole+frac, unit:rest};
+  }
+  m = s.match(/^([½⅓⅔¼¾⅛⅜⅝⅞])(.*)/);
+  if(m) return {num:QTY_FRACS[m[1]]||0, unit:m[2]||''};
+  return {num:null, unit:s};
+}
+function fmtQty(num, unit){
+  if(num===null||num===undefined) return unit||'';
+  if(num<=0) return '0'+unit;
+  const whole = Math.floor(num+0.04);
+  const frac  = num - whole;
+  let fs = '';
+  for(const [v,s] of QTY_FRAC_DISP){ if(Math.abs(frac-v)<0.07){fs=s;break;} }
+  if(!fs && Math.abs(frac)>0.07) return parseFloat(num.toFixed(1))+unit;
+  return (whole>0?String(whole):'')+fs+unit;
+}
+
+/* =========================================================
    STATE
    ========================================================= */
 let state = {
@@ -1238,11 +1289,11 @@ function renderMealCard(l, r, diff){
       <div class="meal-date"><div class="d">${dayName}</div><div class="n">${dayNum}</div></div>
       <div class="meal-body">
         <div class="meal-title">${r.title}${badge}</div>
-        <div class="meal-meta">Serves ${l.headcount} · ${r.cuisine} · ${r.method} · ~${r.totalMin} min total</div>
+        <div class="meal-meta">Serves <span class="scrub-num" data-scrub="headcount" data-lid="${l.id}" data-rid="${r.id}">${l.headcount}</span> · ${r.cuisine} · ${r.method} · ~${r.totalMin} min total</div>
         ${l.note ? `<div class="meal-note">${l.note}</div>` : ""}
         <details>
           <summary>Ingredients & steps</summary>
-          ${renderIngredientsAndSteps(r)}
+          ${renderIngredientsAndSteps(r, l.headcount)}
         </details>
         <div class="row-actions">
           ${l.status !== "cooked" ? `<button class="primary" onclick="markCooked('${l.id}')">Mark cooked</button>` : ""}
@@ -1254,15 +1305,43 @@ function renderMealCard(l, r, diff){
   </div>`;
 }
 
-function renderIngredientsAndSteps(r){
-  const ing = r.ingredients.map((i, idx) => {
+function renderIngredientsAndSteps(r, displayServings){
+  const baseServings = r.servings || 2;
+  const scale = (displayServings && displayServings !== baseServings) ? displayServings / baseServings : 1;
+  const ingRows = r.ingredients.map((i, idx) => {
     const hasSubs = !!SUBSTITUTIONS[i.name.toLowerCase().trim()];
-    const hint = hasSubs ? ' title="Hold / hover to swap"' : '';
-    const dataAttr = hasSubs ? ` data-rid="${r.id}" data-idx="${idx}"` : '';
-    return `<li class="type-${i.type}"${dataAttr}${hint}>${i.name} – ${i.qty}</li>`;
-  }).join("");
-  const steps = r.steps.map(s => `<li>${s}</li>`).join("");
-  return `<ul class="ing-list">${ing}</ul><ol class="steps">${steps}</ol>`;
+    const subAttr = hasSubs ? ` data-rid="${r.id}" data-idx="${idx}" title="Hold/hover to swap"` : '';
+    const frozen  = i.frozen ? ` <span class="frozen-tag">❄</span>` : '';
+    const {num, unit} = parseQty(i.qty);
+    const dispQty = num !== null ? fmtQty(num * scale, unit) : i.qty;
+    return `<div class="ing-b-row">
+      <div class="ing-b-rm"><button onclick="removeIngredient('${r.id}',${idx})">Remove</button></div>
+      <div class="ing-b-inner">
+        <span class="ing-b-dot type-${i.type||'other'}"></span>
+        <span class="ing-b-name"${subAttr}>${i.name}${frozen}</span>
+        <span class="ing-b-qty" data-qty-rid="${r.id}" data-qty-idx="${idx}"> – ${dispQty}</span>
+        <button class="ing-b-x" onclick="removeIngredient('${r.id}',${idx})" aria-label="remove">×</button>
+      </div>
+    </div>`;
+  }).join('');
+  const steps = r.steps.map(s => `<li>${s}</li>`).join('');
+  const typeOpts = ["protein","vegetable","fruit","legume","grain","condiment","fermented","other"]
+    .map(t=>`<option value="${t}">${TYPE_LABELS[t]||t}</option>`).join('');
+  return `<div class="ing-list">
+    ${ingRows}
+    <div id="add-ing-btn-${r.id}" class="ing-add-bar">
+      <button onclick="showAddIngForm('${r.id}')">+ Add ingredient</button>
+    </div>
+    <div id="add-ing-form-${r.id}" class="ing-add-form" style="display:none">
+      <input id="add-name-${r.id}" class="add-name-in" placeholder="Ingredient name"
+             onkeydown="if(event.key==='Enter')addIngredient('${r.id}')">
+      <input id="add-qty-${r.id}"  class="add-qty-in"  placeholder="Qty">
+      <select id="add-type-${r.id}">${typeOpts}</select>
+      <button class="btn-sm-green" onclick="addIngredient('${r.id}')">Add</button>
+      <button class="btn-sm-muted" onclick="hideAddIngForm('${r.id}')">Cancel</button>
+    </div>
+  </div>
+  <ol class="steps">${steps}</ol>`;
 }
 
 function showUndoToast(label){
@@ -1328,6 +1407,41 @@ function swapIngredient(rid, idx, newName){
   render();
   queueSave();
 }
+function removeIngredient(rid, idx){
+  const r = state.recipes.find(x => x.id === rid);
+  if (!r) return;
+  r.ingredients.splice(idx, 1);
+  render();
+  queueSave();
+}
+function addIngredient(rid){
+  const nameEl = document.getElementById('add-name-'+rid);
+  const qtyEl  = document.getElementById('add-qty-'+rid);
+  const typeEl = document.getElementById('add-type-'+rid);
+  const name = nameEl ? nameEl.value.trim() : '';
+  if (!name) { if (nameEl) nameEl.focus(); return; }
+  const qty  = qtyEl  ? qtyEl.value.trim()  : '';
+  const type = typeEl ? typeEl.value         : 'other';
+  const r = state.recipes.find(x => x.id === rid);
+  if (!r) return;
+  r.ingredients.push({name, qty, type, frozen:false});
+  render();
+  queueSave();
+}
+function showAddIngForm(rid){
+  const f = document.getElementById('add-ing-form-'+rid);
+  const b = document.getElementById('add-ing-btn-'+rid);
+  if (f) f.style.display = '';
+  if (b) b.style.display = 'none';
+  const n = document.getElementById('add-name-'+rid);
+  if (n) n.focus();
+}
+function hideAddIngForm(rid){
+  const f = document.getElementById('add-ing-form-'+rid);
+  const b = document.getElementById('add-ing-btn-'+rid);
+  if (f) f.style.display = 'none';
+  if (b) b.style.display = '';
+}
 function markCooked(logId){
   const l = state.log.find(x => x.id === logId);
   if (!l) return;
@@ -1380,7 +1494,7 @@ function renderLibrary(){
     const repeatTag = r.repeatOf ? `<span class="tag">Repeat of: ${recipeById(r.repeatOf)?.title.split(",")[0] || ""}</span>` : "";
     html += `<div class="card recipe-card">
       <h3>${r.title}</h3>
-      <div class="meal-meta">Serves ${r.servings} · ${r.cuisine} · ${r.method}</div>
+      <div class="meal-meta">Serves <span class="scrub-num" data-scrub="servings" data-rid="${r.id}">${r.servings}</span> · ${r.cuisine} · ${r.method}</div>
       <div class="meal-meta">Active ~${r.activeMin} min · Total ~${r.totalMin} min</div>
       <div style="margin-top:6px;">
         ${r.leftoverFriendly ? '<span class="tag">Leftover-friendly</span>' : ""}
@@ -1923,19 +2037,19 @@ form.addEventListener("submit", async function(e){
 // Ingredient substitution event wiring
 (function(){
   let hoverTimer = null, longTimer = null;
-  function ingLi(t){ return t && t.closest && t.closest(".ing-list li[data-rid]"); }
+  function ingEl(t){ return t && t.closest && t.closest(".ing-b-name[data-rid]"); }
   document.addEventListener("mouseover", e => {
-    const li = ingLi(e.target); if (!li) return;
+    const li = ingEl(e.target); if (!li) return;
     clearTimeout(hoverTimer);
     hoverTimer = setTimeout(() => showSubPopup(li, null), 350);
   });
   document.addEventListener("mouseout", e => {
-    const li = ingLi(e.target); if (!li) return;
+    const li = ingEl(e.target); if (!li) return;
     clearTimeout(hoverTimer);
     hoverTimer = setTimeout(hideSubPopup, 200);
   });
   document.addEventListener("touchstart", e => {
-    const li = ingLi(e.target); if (!li) return;
+    const li = ingEl(e.target); if (!li) return;
     const touch = e.touches[0];
     longTimer = setTimeout(() => { showSubPopup(li, touch); }, 500);
   }, {passive:true});
@@ -1943,15 +2057,132 @@ form.addEventListener("submit", async function(e){
   document.addEventListener("touchmove", () => clearTimeout(longTimer), {passive:true});
   document.addEventListener("click", e => {
     const p = document.getElementById("ing-sub-popup");
-    if (p && !p.contains(e.target) && !ingLi(e.target)) hideSubPopup();
+    if (p && !p.contains(e.target) && !ingEl(e.target)) hideSubPopup();
   });
-  // Keep popup open while hovering it
   window.addEventListener("load", () => {
     const p = document.getElementById("ing-sub-popup");
     if (!p) return;
     p.addEventListener("mouseenter", () => clearTimeout(hoverTimer));
     p.addEventListener("mouseleave", () => { hoverTimer = setTimeout(hideSubPopup, 200); });
   });
+})();
+
+// Swipe-to-remove for ingredient rows
+(function(){
+  let swipeStartX = null, swipeRow = null;
+  document.addEventListener("touchstart", e => {
+    const row = e.target.closest(".ing-b-row");
+    if (!row) return;
+    swipeStartX = e.touches[0].clientX;
+    swipeRow = row;
+  }, {passive:true});
+  document.addEventListener("touchmove", e => {
+    if (swipeStartX === null || !swipeRow) return;
+    const dx = swipeStartX - e.touches[0].clientX;
+    if (dx > 40) {
+      document.querySelectorAll(".ing-b-row.swiped").forEach(r => { if(r!==swipeRow) r.classList.remove("swiped"); });
+      swipeRow.classList.add("swiped");
+    } else if (dx < -15) {
+      swipeRow.classList.remove("swiped");
+    }
+  }, {passive:true});
+  document.addEventListener("touchend", () => { swipeStartX = null; swipeRow = null; }, {passive:true});
+  document.addEventListener("click", e => {
+    if (!e.target.closest(".ing-b-row")) {
+      document.querySelectorAll(".ing-b-row.swiped").forEach(r => r.classList.remove("swiped"));
+    }
+  });
+})();
+
+// Bret Victor–style scrubable numbers
+(function(){
+  let ss = null; // scrub state
+  function scrubEl(t){ return t && t.closest && t.closest(".scrub-num"); }
+  function liveScale(el, newVal, ss){
+    const rid = ss.rid;
+    const r = state.recipes.find(x => x.id === rid);
+    if (!r) return;
+    const displayScale = ss.type === "headcount"
+      ? newVal / r.servings
+      : newVal / ss.startVal;
+    const card = el.closest(".card") || el.closest("details") || document.body;
+    card.querySelectorAll("[data-qty-rid]").forEach(qel => {
+      if (qel.dataset.qtyRid !== rid) return;
+      const idx = parseInt(qel.dataset.qtyIdx);
+      const ing = r.ingredients[idx];
+      if (!ing) return;
+      const {num, unit} = parseQty(ing.qty);
+      qel.textContent = num !== null ? " – " + fmtQty(num * displayScale, unit) : " – " + ing.qty;
+    });
+  }
+  function startScrub(el, clientX){
+    ss = {
+      el, type: el.dataset.scrub,
+      lid: el.dataset.lid, rid: el.dataset.rid,
+      startX: clientX,
+      startVal: parseInt(el.textContent),
+      currentVal: parseInt(el.textContent)
+    };
+    el.classList.add("scrub-active");
+  }
+  function moveScrub(clientX){
+    if (!ss) return;
+    const delta = Math.round((clientX - ss.startX) / 20);
+    const nv = Math.max(1, Math.min(12, ss.startVal + delta));
+    if (nv === ss.currentVal) return;
+    ss.currentVal = nv;
+    ss.el.textContent = nv;
+    liveScale(ss.el, nv, ss);
+  }
+  function endScrub(){
+    if (!ss) return;
+    ss.el.classList.remove("scrub-active");
+    const val = ss.currentVal;
+    if (val !== ss.startVal) {
+      if (ss.type === "headcount") {
+        const l = state.log.find(x => x.id === ss.lid);
+        if (l) { l.headcount = val; queueSave(); }
+      } else {
+        const r = state.recipes.find(x => x.id === ss.rid);
+        if (r) {
+          const scale = val / ss.startVal;
+          r.ingredients = r.ingredients.map(i => {
+            const {num, unit} = parseQty(i.qty);
+            return num !== null ? {...i, qty: fmtQty(num * scale, unit)} : i;
+          });
+          r.servings = val;
+          queueSave();
+        }
+      }
+    }
+    ss = null;
+  }
+  document.addEventListener("mousedown", e => {
+    const el = scrubEl(e.target); if (!el) return;
+    startScrub(el, e.clientX);
+    e.preventDefault();
+  });
+  document.addEventListener("mousemove", e => { if (ss) moveScrub(e.clientX); });
+  document.addEventListener("mouseup", endScrub);
+  // Touch: 200ms long-press to activate scrub
+  let touchTimer = null, touchActive = false, touchEl = null, touchStartX = 0;
+  document.addEventListener("touchstart", e => {
+    const el = scrubEl(e.target); if (!el) return;
+    touchEl = el; touchStartX = e.touches[0].clientX;
+    touchTimer = setTimeout(() => {
+      touchActive = true;
+      startScrub(el, touchStartX);
+    }, 200);
+  }, {passive:true});
+  document.addEventListener("touchmove", e => {
+    if (!touchActive) { clearTimeout(touchTimer); return; }
+    moveScrub(e.touches[0].clientX);
+  }, {passive:true});
+  document.addEventListener("touchend", () => {
+    clearTimeout(touchTimer);
+    if (touchActive) endScrub();
+    touchActive = false; touchEl = null;
+  }, {passive:true});
 })();
 
 onAuthStateChanged(auth, (user) => {
