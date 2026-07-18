@@ -67,6 +67,9 @@
   .ing-add-form .add-name-in{flex:1;min-width:120px;}.ing-add-form .add-qty-in{width:80px;}
   .btn-sm-green{background:var(--green);color:#fff;border:none;border-radius:6px;font-size:12px;padding:5px 11px;cursor:pointer;font-family:inherit;font-weight:600;}
   .btn-sm-muted{background:none;border:none;color:var(--muted);font-size:12px;padding:5px 8px;cursor:pointer;font-family:inherit;}
+  .step-row{display:flex;align-items:flex-start;gap:6px;padding-right:4px;}
+  .step-row:hover .step-rm-x{opacity:1;}
+  .step-rm-x{flex-shrink:0;margin-top:1px;}
   .steps{margin:8px 0 0;padding-left:18px;font-size:13px;}
   .steps li{margin-bottom:5px;line-height:1.4;}
   .tag{display:inline-block;font-size:10.5px;background:var(--cream);color:var(--green);border-radius:5px;padding:2px 7px;margin:0 4px 4px 0;}
@@ -1291,7 +1294,7 @@ function renderMealCard(l, r, diff){
         <div class="meal-title">${r.title}${badge}</div>
         <div class="meal-meta">Serves <span class="scrub-num" data-scrub="headcount" data-lid="${l.id}" data-rid="${r.id}">${l.headcount}</span> · ${r.cuisine} · ${r.method} · ~${r.totalMin} min total</div>
         ${l.note ? `<div class="meal-note">${l.note}</div>` : ""}
-        <details>
+        <details id="det-${l.id}">
           <summary>Ingredients & steps</summary>
           ${renderIngredientsAndSteps(r, l.headcount)}
         </details>
@@ -1324,7 +1327,10 @@ function renderIngredientsAndSteps(r, displayServings){
       </div>
     </div>`;
   }).join('');
-  const steps = r.steps.map(s => `<li>${s}</li>`).join('');
+  const steps = r.steps.map((s, si) => `<li class="step-row">
+    <span class="step-text">${s}</span>
+    <button class="ing-b-x step-rm-x" onclick="removeStep('${r.id}',${si})" aria-label="remove step">×</button>
+  </li>`).join('');
   const typeOpts = ["protein","vegetable","fruit","legume","grain","condiment","fermented","other"]
     .map(t=>`<option value="${t}">${TYPE_LABELS[t]||t}</option>`).join('');
   return `<div class="ing-list">
@@ -1341,7 +1347,18 @@ function renderIngredientsAndSteps(r, displayServings){
       <button class="btn-sm-muted" onclick="hideAddIngForm('${r.id}')">Cancel</button>
     </div>
   </div>
-  <ol class="steps">${steps}</ol>`;
+  <ol class="steps">${steps}</ol>
+  <div id="add-step-btn-${r.id}" class="ing-add-bar" style="border-top:0.5px solid var(--border);border-radius:0 0 8px 8px;margin-top:4px;">
+    <button onclick="showAddStepForm('${r.id}')">+ Add step</button>
+  </div>
+  <div id="add-step-form-${r.id}" class="ing-add-form" style="display:none;flex-direction:column;gap:6px;margin-top:4px;border-radius:8px;">
+    <textarea id="add-step-ta-${r.id}" rows="2" placeholder="Describe the cooking step…"
+      style="font-size:12.5px;border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-family:inherit;resize:vertical;width:100%;box-sizing:border-box;background:#fff;color:var(--text);"></textarea>
+    <div style="display:flex;gap:6px;">
+      <button class="btn-sm-green" onclick="addStep('${r.id}')">Add step</button>
+      <button class="btn-sm-muted" onclick="hideAddStepForm('${r.id}')">Cancel</button>
+    </div>
+  </div>`;
 }
 
 function showUndoToast(label){
@@ -1442,6 +1459,35 @@ function hideAddIngForm(rid){
   if (f) f.style.display = 'none';
   if (b) b.style.display = '';
 }
+function removeStep(rid, idx){
+  const r = state.recipes.find(x => x.id === rid);
+  if (!r) return;
+  r.steps.splice(idx, 1);
+  render(); queueSave();
+}
+function addStep(rid){
+  const ta = document.getElementById('add-step-ta-'+rid);
+  const text = ta ? ta.value.trim() : '';
+  if (!text) { if (ta) ta.focus(); return; }
+  const r = state.recipes.find(x => x.id === rid);
+  if (!r) return;
+  r.steps.push(text);
+  render(); queueSave();
+}
+function showAddStepForm(rid){
+  const f = document.getElementById('add-step-form-'+rid);
+  const b = document.getElementById('add-step-btn-'+rid);
+  if (f) f.style.display = '';
+  if (b) b.style.display = 'none';
+  const ta = document.getElementById('add-step-ta-'+rid);
+  if (ta) ta.focus();
+}
+function hideAddStepForm(rid){
+  const f = document.getElementById('add-step-form-'+rid);
+  const b = document.getElementById('add-step-btn-'+rid);
+  if (f) f.style.display = 'none';
+  if (b) b.style.display = '';
+}
 function markCooked(logId){
   const l = state.log.find(x => x.id === logId);
   if (!l) return;
@@ -1501,7 +1547,7 @@ function renderLibrary(){
         ${repeatTag}
         ${r.source ? '<span class="tag">Has source</span>' : ""}
       </div>
-      <details><summary>Ingredients & steps</summary>${renderIngredientsAndSteps(r)}</details>
+      <details id="det-r-${r.id}"><summary>Ingredients & steps</summary>${renderIngredientsAndSteps(r)}</details>
       ${r.source ? `<div class="meal-meta" style="margin-top:6px;">Source: ${r.source}</div>` : ""}
       <div class="row-actions">
         <button class="primary" onclick="scheduleRecipe('${r.id}')">Schedule this</button>
@@ -1580,7 +1626,7 @@ function renderWhatCanIMake(){
         <h3>${r.title}</h3>
         <div class="meal-meta">Uses ${have} of ${total} ingredients you have · Serves ${r.servings} · ${r.cuisine}</div>
         <div class="match-bar"><div class="match-fill" style="width:${Math.round(pct*100)}%"></div></div>
-        <details><summary>Full ingredient list & steps</summary>${renderIngredientsAndSteps(r)}</details>
+        <details id="det-wc-${r.id}"><summary>Full ingredient list & steps</summary>${renderIngredientsAndSteps(r)}</details>
         <div class="row-actions">
           <button class="primary" onclick="scheduleRecipe('${r.id}')">Schedule this</button>
         </div>
@@ -1903,6 +1949,8 @@ function handleFile(evt){
    MAIN RENDER
    ========================================================= */
 function render(){
+  // Preserve open <details> across re-render
+  const openIds = new Set([...document.querySelectorAll("details[open][id]")].map(d => d.id));
   renderNav();
   const app = document.getElementById("app");
   let body = "";
@@ -1917,6 +1965,8 @@ function render(){
     <div class="save-banner">Synced automatically to the cloud as you make changes — your phone and computer always show the same data. Use <strong>Export Backup</strong> any time you want an offline copy.</div>
     ${body}
     <div class="footer-note">Dinner Tracker · synced live via Firebase.</div>`;
+  // Reopen any details that were open before re-render
+  openIds.forEach(id => { const d = document.getElementById(id); if (d) d.open = true; });
 }
 
 /* =========================================================
