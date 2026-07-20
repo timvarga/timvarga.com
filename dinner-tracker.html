@@ -185,7 +185,7 @@
   .sortable-ghost{opacity:.25 !important;box-shadow:none !important;}
   .sortable-chosen{box-shadow:var(--shadow-hover) !important;z-index:2;}
   .sortable-drag{opacity:.9 !important;transform:rotate(1deg) scale(1.01);box-shadow:0 10px 36px rgba(44,35,20,.18) !important;}
-  .cal-meal[draggable]{cursor:grab;}
+  .cal-meal[data-lid]{cursor:grab;}
   .cal-cell.drop-over{background:#e4f0e8 !important;outline:2px dashed var(--green);outline-offset:-3px;}
   #drag-strip{position:fixed;bottom:0;left:0;right:0;background:var(--green);z-index:9997;display:none;padding:6px 0 env(safe-area-inset-bottom,10px);box-shadow:0 -4px 24px rgba(0,0,0,.25);}
   #drag-strip-label{font-size:9.5px;color:rgba(255,255,255,.5);text-align:center;letter-spacing:.08em;font-weight:600;text-transform:uppercase;padding-bottom:7px;display:flex;align-items:center;justify-content:center;gap:12px;}
@@ -1854,14 +1854,9 @@ function renderCalendar(){
       const r = recipeById(l.recipeId);
       const short = r ? r.title.split(",")[0].split("&")[0].trim().slice(0,20) : "?";
       const mCls = l.status==="cooked" ? "cooked" : l.status==="skipped" ? "skipped" : "";
-      inner += `<span class="cal-meal ${mCls}" draggable="true"
-        ondragstart="dragStart(event,'${l.id}')"
-        ondragend="dragEnd(event)">${short}</span>`;
+      inner += `<span class="cal-meal ${mCls}" data-lid="${l.id}">${short}</span>`;
     });
-    html += `<div class="${cls}" data-date="${iso}"
-      ondragover="event.preventDefault();this.classList.add('drop-over')"
-      ondragleave="this.classList.remove('drop-over')"
-      ondrop="dropMealOnDate(event,'${iso}')">${inner}</div>`;
+    html += `<div class="${cls}" data-date="${iso}">${inner}</div>`;
   }
 
   const trailing = (7 - ((firstDOW + daysInMonth) % 7)) % 7;
@@ -2185,6 +2180,60 @@ form.addEventListener("submit", async function(e){
   } catch (err) {
     errorEl.textContent = "Sign-in failed — check your email and password.";
   }
+});
+
+// Calendar meal drag — custom mouse drag so elementFromPoint works reliably
+document.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  const chip = e.target.closest('.cal-meal[data-lid]');
+  if (!chip) return;
+
+  const lid = chip.dataset.lid;
+  const startX = e.clientX, startY = e.clientY;
+  let dragging = false, ghost = null, offX = 0, offY = 0, hoverCell = null;
+
+  function onMove(ev) {
+    if (!dragging) {
+      const dx = ev.clientX - startX, dy = ev.clientY - startY;
+      if (dx*dx + dy*dy < 25) return;
+      dragging = true;
+      const rect = chip.getBoundingClientRect();
+      offX = startX - rect.left; offY = startY - rect.top;
+      ghost = chip.cloneNode(true);
+      ghost.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;min-width:${rect.width}px;pointer-events:none;opacity:.9;z-index:9999;transform:scale(1.08);box-shadow:0 4px 16px rgba(0,0,0,.22);border-radius:4px;padding:2px 5px;background:var(--card);font-size:9.5px;transition:none;white-space:nowrap;`;
+      document.body.appendChild(ghost);
+      chip.style.opacity = '0.2';
+      document.body.style.userSelect = 'none';
+    }
+    ghost.style.left = (ev.clientX - offX) + 'px';
+    ghost.style.top  = (ev.clientY - offY) + 'px';
+    // hide ghost so elementFromPoint sees through it
+    ghost.style.display = 'none';
+    const under = document.elementFromPoint(ev.clientX, ev.clientY);
+    ghost.style.display = '';
+    const cell = under && under.closest('.cal-cell[data-date]:not(.other-month)');
+    if (hoverCell && hoverCell !== cell) hoverCell.classList.remove('drop-over');
+    hoverCell = cell || null;
+    if (hoverCell) hoverCell.classList.add('drop-over');
+  }
+
+  function onUp() {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    document.body.style.userSelect = '';
+    if (!dragging) return;
+    if (ghost) { ghost.remove(); ghost = null; }
+    chip.style.opacity = '';
+    if (hoverCell) {
+      hoverCell.classList.remove('drop-over');
+      const newDate = hoverCell.dataset.date;
+      const l = state.log.find(x => x.id === lid);
+      if (l && l.date !== newDate) { l.date = newDate; render(); queueSave(); }
+    }
+  }
+
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
 });
 
 // Meal move-mode (tap-to-reschedule for mobile / keyboard fallback)
