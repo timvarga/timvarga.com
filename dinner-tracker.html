@@ -2146,6 +2146,8 @@ form.addEventListener("submit", async function(e){
 
 // Meal drag-to-reschedule
 let __moveLid = null;
+let __hoverDate = null;  // last date cell the drag cursor passed over
+let __dragThrottleT = 0;
 
 function moveMealToDate(lid, dateStr){
   const l = state.log.find(x => x.id === lid);
@@ -2168,9 +2170,6 @@ function buildDragStrip(lid){
     const isToday = ds === todayStr;
     const occupied = state.log.some(x => x.date === ds && x.id !== lid);
     html += `<div class="strip-cell${isToday?' strip-today':''}${occupied?' strip-occupied':''}" id="sc-${ds}"
-      ondragover="event.preventDefault();this.classList.add('drop-over')"
-      ondragleave="this.classList.remove('drop-over')"
-      ondrop="dropMealOnDate(event,'${ds}')"
       onclick="tapStripDate('${ds}')">
       <span class="sd">${dn}</span>
       <span class="sn">${d.getDate()}</span>
@@ -2184,12 +2183,47 @@ function buildDragStrip(lid){
   }, 20);
 }
 
+// Track cursor position during drag via the 'drag' event (fires on the dragged element).
+// This is far more reliable than relying on 'drop' events on targets or elementFromPoint in dragend.
+document.addEventListener('drag', e => {
+  if (!__moveLid) return;
+  // Ignore zero-coordinate events (fired at drag end in some browsers)
+  if (!e.clientX && !e.clientY) return;
+  // Throttle to ~60fps
+  const now = Date.now();
+  if (now - __dragThrottleT < 16) return;
+  __dragThrottleT = now;
+
+  const under = document.elementFromPoint(e.clientX, e.clientY);
+  const stripCell = under && under.closest('.strip-cell[id^="sc-"]');
+  const calCell   = !stripCell && under && under.closest('.cal-cell[data-date]');
+
+  // Update highlight
+  document.querySelectorAll('.drop-over').forEach(x => x.classList.remove('drop-over'));
+  if (stripCell) {
+    __hoverDate = stripCell.id.replace('sc-', '');
+    stripCell.classList.add('drop-over');
+  } else if (calCell) {
+    __hoverDate = calCell.dataset.date;
+    calCell.classList.add('drop-over');
+  } else {
+    __hoverDate = null;
+  }
+});
+
+// Allow drop anywhere in the strip or calendar (needed for correct cursor)
+document.addEventListener('dragover', e => {
+  if (!__moveLid) return;
+  if (e.target.closest('#drag-strip, .cal-cell')) e.preventDefault();
+});
+
 function dragStart(e, lid){
   // Don't steal drag from interactive elements
   if (e.target.closest('button,input,select,textarea,summary,details,.scrub-num,.row-actions,.ing-list,.steps,.ing-add-form,.ing-add-bar')){
     e.preventDefault(); return;
   }
   __moveLid = lid;
+  __hoverDate = null;
   e.dataTransfer.effectAllowed = 'move';
   e.dataTransfer.setData('text/plain', lid);
   buildDragStrip(lid);
@@ -2202,41 +2236,28 @@ function dragStart(e, lid){
 
 function dragEnd(e){
   const lid = __moveLid;
-  if (!lid) return; // already committed
-
-  // Primary commit: find what's under the cursor when the drag released
-  const under = document.elementFromPoint(e.clientX, e.clientY);
-  const cell  = under && under.closest('.strip-cell[id]');
-  if (cell) {
-    const dateStr = cell.id.replace('sc-', '');
-    __moveLid = null;
-    hideDragStrip();
-    moveMealToDate(lid, dateStr);
-    return;
-  }
-  // Also check calendar cells
-  const calCell = under && under.closest('.cal-cell[data-date]');
-  if (calCell) {
-    __moveLid = null;
-    hideDragStrip();
-    moveMealToDate(lid, calCell.dataset.date);
-    return;
-  }
-
-  // No valid target — clean up without moving
-  const el = document.getElementById('mc-'+lid);
-  if (el) el.classList.remove('dragging');
-  if (!el || !el.classList.contains('move-selected')){
-    hideDragStrip(); __moveLid = null;
-  }
+  const date = __hoverDate;
+  __moveLid = null;
+  __hoverDate = null;
   document.querySelectorAll('.drop-over').forEach(x => x.classList.remove('drop-over'));
+  if (!lid) return;
+  const el = document.getElementById('mc-'+lid);
+  if (el) el.classList.remove('dragging', 'move-selected');
+  if (date) {
+    hideDragStrip();
+    moveMealToDate(lid, date);
+  } else {
+    // Dropped nowhere valid — stay in move-mode so user can tap a date
+    if (el) el.classList.add('move-selected');
+    __moveLid = lid;
+  }
 }
 
 function dropMealOnDate(e, dateStr){
-  // Belt-and-suspenders: also handle the drop event directly
   e.preventDefault();
   const lid = __moveLid; if (!lid) return;
   __moveLid = null;
+  __hoverDate = null;
   hideDragStrip();
   moveMealToDate(lid, dateStr);
 }
