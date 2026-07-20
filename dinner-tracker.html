@@ -2146,8 +2146,7 @@ form.addEventListener("submit", async function(e){
 
 // Meal drag-to-reschedule
 let __moveLid = null;
-let __hoverDate = null;  // last date cell the drag cursor passed over
-let __dragThrottleT = 0;
+let __hoverDate = null;  // date cell currently under the drag cursor
 
 function moveMealToDate(lid, dateStr){
   const l = state.log.find(x => x.id === lid);
@@ -2183,38 +2182,35 @@ function buildDragStrip(lid){
   }, 20);
 }
 
-// Track cursor position during drag via the 'drag' event (fires on the dragged element).
-// This is far more reliable than relying on 'drop' events on targets or elementFromPoint in dragend.
-document.addEventListener('drag', e => {
-  if (!__moveLid) return;
-  // Ignore zero-coordinate events (fired at drag end in some browsers)
-  if (!e.clientX && !e.clientY) return;
-  // Throttle to ~60fps
-  const now = Date.now();
-  if (now - __dragThrottleT < 16) return;
-  __dragThrottleT = now;
-
-  const under = document.elementFromPoint(e.clientX, e.clientY);
-  const stripCell = under && under.closest('.strip-cell[id^="sc-"]');
-  const calCell   = !stripCell && under && under.closest('.cal-cell[data-date]');
-
-  // Update highlight
-  document.querySelectorAll('.drop-over').forEach(x => x.classList.remove('drop-over'));
-  if (stripCell) {
-    __hoverDate = stripCell.id.replace('sc-', '');
-    stripCell.classList.add('drop-over');
-  } else if (calCell) {
-    __hoverDate = calCell.dataset.date;
-    calCell.classList.add('drop-over');
-  } else {
-    __hoverDate = null;
-  }
-});
-
-// Allow drop anywhere in the strip or calendar (needed for correct cursor)
+// Track which date cell the cursor is over using dragover on the TARGET element.
+// dragover fires reliably on the element under the cursor (unlike the 'drag' event which has 0,0 coords in Chrome).
 document.addEventListener('dragover', e => {
   if (!__moveLid) return;
-  if (e.target.closest('#drag-strip, .cal-cell')) e.preventDefault();
+  const stripCell = e.target.closest('.strip-cell[id^="sc-"]');
+  const calCell   = !stripCell && e.target.closest('.cal-cell[data-date]');
+  if (stripCell) {
+    e.preventDefault(); // enable drop cursor
+    const date = stripCell.id.replace('sc-', '');
+    if (date !== __hoverDate) {
+      document.querySelectorAll('.drop-over').forEach(x => x.classList.remove('drop-over'));
+      stripCell.classList.add('drop-over');
+      __hoverDate = date;
+    }
+  } else if (calCell) {
+    e.preventDefault();
+    const date = calCell.dataset.date;
+    if (date !== __hoverDate) {
+      document.querySelectorAll('.drop-over').forEach(x => x.classList.remove('drop-over'));
+      calCell.classList.add('drop-over');
+      __hoverDate = date;
+    }
+  } else {
+    // Cursor is over empty space — clear hover state
+    if (__hoverDate !== null) {
+      __hoverDate = null;
+      document.querySelectorAll('.drop-over').forEach(x => x.classList.remove('drop-over'));
+    }
+  }
 });
 
 function dragStart(e, lid){
@@ -2243,14 +2239,9 @@ function dragEnd(e){
   if (!lid) return;
   const el = document.getElementById('mc-'+lid);
   if (el) el.classList.remove('dragging', 'move-selected');
-  if (date) {
-    hideDragStrip();
-    moveMealToDate(lid, date);
-  } else {
-    // Dropped nowhere valid — stay in move-mode so user can tap a date
-    if (el) el.classList.add('move-selected');
-    __moveLid = lid;
-  }
+  hideDragStrip();
+  if (date) moveMealToDate(lid, date);
+  // else: drag cancelled — clean exit, nothing moved
 }
 
 function dropMealOnDate(e, dateStr){
