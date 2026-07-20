@@ -166,6 +166,26 @@
   /* Scrubable numbers */
   .scrub-num{display:inline-block;color:var(--green);font-weight:600;font-family:var(--serif);border-bottom:1.5px dashed var(--green);cursor:ew-resize;padding:0 2px;user-select:none;-webkit-user-select:none;border-radius:3px;transition:background .1s;}
   .scrub-num:hover,.scrub-num.scrub-active{background:#e4f0e8;}
+  /* Drag-to-reschedule */
+  .meal-date{cursor:pointer;user-select:none;-webkit-user-select:none;}
+  .drag-handle{display:block;font-size:11px;letter-spacing:1.5px;color:var(--muted);opacity:0;transition:opacity .15s;margin-bottom:5px;line-height:1;}
+  .meal-card:hover .drag-handle,.meal-card.move-selected .drag-handle{opacity:.55;}
+  .meal-card.dragging{opacity:.25;box-shadow:none !important;outline:none !important;}
+  .meal-card.move-selected{outline:2px solid var(--saffron);outline-offset:3px;}
+  .cal-meal[draggable]{cursor:grab;}
+  .cal-cell.drop-over{background:#e4f0e8 !important;outline:2px dashed var(--green);outline-offset:-3px;}
+  #drag-strip{position:fixed;bottom:0;left:0;right:0;background:var(--green);z-index:9997;display:none;padding:6px 0 env(safe-area-inset-bottom,10px);box-shadow:0 -4px 24px rgba(0,0,0,.25);}
+  #drag-strip-label{font-size:9.5px;color:rgba(255,255,255,.5);text-align:center;letter-spacing:.08em;font-weight:600;text-transform:uppercase;padding-bottom:7px;display:flex;align-items:center;justify-content:center;gap:12px;}
+  #drag-strip-label button{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:5px;color:rgba(255,255,255,.75);font-size:9.5px;padding:3px 10px;cursor:pointer;font-family:var(--sans);}
+  #drag-strip-inner{display:flex;overflow-x:auto;gap:3px;padding:0 12px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  #drag-strip-inner::-webkit-scrollbar{display:none;}
+  .strip-cell{flex-shrink:0;width:48px;text-align:center;border-radius:8px;padding:6px 2px;cursor:pointer;color:rgba(255,255,255,.65);transition:all .1s;border:1.5px solid transparent;}
+  .strip-cell:hover,.strip-cell.drop-over{background:rgba(255,255,255,.18);color:#fff;border-color:rgba(255,255,255,.35);}
+  .strip-cell.strip-today{border-color:rgba(255,255,255,.3);color:rgba(255,255,255,.9);}
+  .strip-cell.strip-occupied::after{content:'•';display:block;font-size:10px;line-height:.8;color:rgba(255,255,255,.3);}
+  .strip-cell .sd{font-size:8.5px;text-transform:uppercase;letter-spacing:.06em;font-weight:600;display:block;}
+  .strip-cell .sn{font-size:19px;font-weight:300;font-family:var(--serif);display:block;line-height:1.15;}
+  .strip-cell .sm{font-size:8px;opacity:.45;display:block;}
   /* Grocery grid */
   .gl-toggles{display:flex;gap:6px;align-items:center;}
   .gl-toggle{font-size:11.5px;padding:5px 11px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:#fff;color:var(--muted);}
@@ -1315,9 +1335,15 @@ function renderMealCard(l, r, diff){
   if (l.status === "cooked") badge = '<span class="badge cooked">Cooked</span>';
   else if (diff !== null) badge = urgencyBadge(diff);
 
-  return `<div class="card meal-card" data-cuisine="${r.cuisine}">
+  return `<div class="card meal-card" id="mc-${l.id}" data-cuisine="${r.cuisine}">
     <div class="meal-row">
-      <div class="meal-date"><div class="d">${dayName}</div><div class="n">${dayNum}</div></div>
+      <div class="meal-date" onclick="enterMoveMode('${l.id}')" title="Click or drag to reschedule">
+        <span class="drag-handle" draggable="true"
+          ondragstart="event.stopPropagation();dragStart(event,'${l.id}')"
+          ondragend="event.stopPropagation();dragEnd(event)"
+          onclick="event.stopPropagation()">⠿⠿</span>
+        <div class="d">${dayName}</div><div class="n">${dayNum}</div>
+      </div>
       <div class="meal-body">
         <div class="meal-title">${r.title}${badge}</div>
         <div class="meal-meta">Serves <span class="scrub-num" data-scrub="headcount" data-lid="${l.id}" data-rid="${r.id}">${l.headcount}</span> · ${r.cuisine} · ${r.method} · ~${r.totalMin} min total</div>
@@ -1817,9 +1843,14 @@ function renderCalendar(){
       const r = recipeById(l.recipeId);
       const short = r ? r.title.split(",")[0].split("&")[0].trim().slice(0,20) : "?";
       const mCls = l.status==="cooked" ? "cooked" : l.status==="skipped" ? "skipped" : "";
-      inner += `<span class="cal-meal ${mCls}">${short}</span>`;
+      inner += `<span class="cal-meal ${mCls}" draggable="true"
+        ondragstart="dragStart(event,'${l.id}')"
+        ondragend="dragEnd(event)">${short}</span>`;
     });
-    html += `<div class="${cls}">${inner}</div>`;
+    html += `<div class="${cls}"
+      ondragover="event.preventDefault();this.classList.add('drop-over')"
+      ondragleave="this.classList.remove('drop-over')"
+      ondrop="dropMealOnDate(event,'${iso}')">${inner}</div>`;
   }
 
   const trailing = (7 - ((firstDOW + daysInMonth) % 7)) % 7;
@@ -2111,6 +2142,115 @@ form.addEventListener("submit", async function(e){
   }
 });
 
+// Meal drag-to-reschedule
+let __moveLid = null;
+
+function moveMealToDate(lid, dateStr){
+  const l = state.log.find(x => x.id === lid);
+  if (!l || l.date === dateStr) return;
+  l.date = dateStr;
+  render(); queueSave();
+}
+
+function buildDragStrip(lid){
+  const inner = document.getElementById('drag-strip-inner');
+  if (!inner) return;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todayStr = today.toISOString().slice(0,10);
+  let html = '';
+  for (let i = -14; i <= 42; i++){
+    const d = new Date(today); d.setDate(d.getDate() + i);
+    const ds = d.toISOString().slice(0,10);
+    const dn = d.toLocaleDateString('en-US',{weekday:'short'});
+    const dm = d.toLocaleDateString('en-US',{month:'short'});
+    const isToday = ds === todayStr;
+    const occupied = state.log.some(x => x.date === ds && x.id !== lid);
+    html += `<div class="strip-cell${isToday?' strip-today':''}${occupied?' strip-occupied':''}" id="sc-${ds}"
+      ondragover="event.preventDefault();this.classList.add('drop-over')"
+      ondragleave="this.classList.remove('drop-over')"
+      ondrop="dropMealOnDate(event,'${ds}')"
+      onclick="tapStripDate('${ds}')">
+      <span class="sd">${dn}</span>
+      <span class="sn">${d.getDate()}</span>
+      <span class="sm">${dm}</span>
+    </div>`;
+  }
+  inner.innerHTML = html;
+  setTimeout(() => {
+    const t = document.getElementById('sc-'+todayStr);
+    if (t) t.scrollIntoView({inline:'center',behavior:'instant'});
+  }, 20);
+}
+
+function dragStart(e, lid){
+  __moveLid = lid;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', lid);
+  buildDragStrip(lid);
+  document.getElementById('drag-strip').style.display = '';
+  setTimeout(() => {
+    const el = document.getElementById('mc-'+lid);
+    if (el) el.classList.add('dragging');
+  }, 0);
+}
+
+function dragEnd(e){
+  if (!__moveLid) return; // already committed by dropMealOnDate
+  const el = document.getElementById('mc-'+__moveLid);
+  if (el) el.classList.remove('dragging');
+  // Keep strip open if in tap/move mode
+  if (!el || !el.classList.contains('move-selected')){
+    hideDragStrip(); __moveLid = null;
+  }
+  document.querySelectorAll('.drop-over').forEach(x => x.classList.remove('drop-over'));
+}
+
+function dropMealOnDate(e, dateStr){
+  e.preventDefault();
+  const lid = __moveLid; if (!lid) return;
+  document.querySelectorAll('.drop-over').forEach(x => x.classList.remove('drop-over'));
+  __moveLid = null;
+  hideDragStrip();
+  moveMealToDate(lid, dateStr); // calls render() which removes .dragging/.move-selected
+}
+
+function enterMoveMode(lid){
+  if (__moveLid === lid){ exitMoveMode(); return; } // toggle off
+  exitMoveMode();
+  __moveLid = lid;
+  const el = document.getElementById('mc-'+lid);
+  if (el) el.classList.add('move-selected');
+  buildDragStrip(lid);
+  document.getElementById('drag-strip').style.display = '';
+}
+
+function tapStripDate(dateStr){
+  if (!__moveLid) return;
+  const lid = __moveLid;
+  exitMoveMode();
+  moveMealToDate(lid, dateStr);
+}
+
+function exitMoveMode(){
+  if (__moveLid){
+    const el = document.getElementById('mc-'+__moveLid);
+    if (el) el.classList.remove('move-selected','dragging');
+  }
+  __moveLid = null;
+  hideDragStrip();
+}
+
+function hideDragStrip(){
+  const s = document.getElementById('drag-strip');
+  if (s) s.style.display = 'none';
+  document.querySelectorAll('.drop-over').forEach(x => x.classList.remove('drop-over'));
+}
+
+// Dismiss move mode when clicking outside a meal card or the strip
+document.addEventListener('click', e => {
+  if (__moveLid && !e.target.closest('.meal-card, #drag-strip')) exitMoveMode();
+});
+
 // Ingredient substitution event wiring
 (function(){
   let hoverTimer = null, longTimer = null;
@@ -2281,5 +2421,12 @@ onAuthStateChanged(auth, (user) => {
 
 <div id="ing-sub-popup"></div>
 <div id="undo-toast"><span class="toast-label"></span><button onclick="undoLast()">Undo</button></div>
+<div id="drag-strip">
+  <div id="drag-strip-label">
+    <span>Drag or tap a date to reschedule</span>
+    <button onclick="exitMoveMode()">✕ Cancel</button>
+  </div>
+  <div id="drag-strip-inner"></div>
+</div>
 </body>
 </html>
