@@ -2182,13 +2182,15 @@ form.addEventListener("submit", async function(e){
   }
 });
 
-// Calendar meal drag — custom mouse drag so elementFromPoint works reliably
+// Calendar cell drag — drag the whole cell, swap dates with target
 document.addEventListener('mousedown', e => {
   if (e.button !== 0) return;
-  const chip = e.target.closest('.cal-meal[data-lid]');
-  if (!chip) return;
+  const sourceCell = e.target.closest('.cal-cell[data-date]:not(.other-month)');
+  if (!sourceCell) return;
+  const firstChip = sourceCell.querySelector('.cal-meal[data-lid]');
+  if (!firstChip) return; // empty cell — nothing to drag
 
-  const lid = chip.dataset.lid;
+  const lid = firstChip.dataset.lid;
   const startX = e.clientX, startY = e.clientY;
   let dragging = false, ghost = null, offX = 0, offY = 0, hoverCell = null;
 
@@ -2197,23 +2199,24 @@ document.addEventListener('mousedown', e => {
       const dx = ev.clientX - startX, dy = ev.clientY - startY;
       if (dx*dx + dy*dy < 25) return;
       dragging = true;
-      const rect = chip.getBoundingClientRect();
+      const rect = sourceCell.getBoundingClientRect();
       offX = startX - rect.left; offY = startY - rect.top;
-      ghost = chip.cloneNode(true);
-      ghost.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;min-width:${rect.width}px;pointer-events:none;opacity:.9;z-index:9999;transform:scale(1.08);box-shadow:0 4px 16px rgba(0,0,0,.22);border-radius:4px;padding:2px 5px;background:var(--card);font-size:9.5px;transition:none;white-space:nowrap;`;
+      // Ghost is a clone of the whole cell
+      ghost = sourceCell.cloneNode(true);
+      ghost.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;pointer-events:none;opacity:.88;z-index:9999;transform:scale(1.06);box-shadow:0 8px 28px rgba(0,0,0,.22);border-radius:8px;background:var(--card);border:1px solid var(--border);overflow:hidden;box-sizing:border-box;transition:none;`;
       document.body.appendChild(ghost);
-      chip.style.opacity = '0.2';
+      sourceCell.style.opacity = '0.25';
       document.body.style.userSelect = 'none';
     }
     ghost.style.left = (ev.clientX - offX) + 'px';
     ghost.style.top  = (ev.clientY - offY) + 'px';
-    // hide ghost so elementFromPoint sees through it
+    // Hide ghost so elementFromPoint sees through it to the target cell
     ghost.style.display = 'none';
     const under = document.elementFromPoint(ev.clientX, ev.clientY);
     ghost.style.display = '';
     const cell = under && under.closest('.cal-cell[data-date]:not(.other-month)');
     if (hoverCell && hoverCell !== cell) hoverCell.classList.remove('drop-over');
-    hoverCell = cell || null;
+    hoverCell = (cell && cell !== sourceCell) ? cell : null;
     if (hoverCell) hoverCell.classList.add('drop-over');
   }
 
@@ -2223,12 +2226,18 @@ document.addEventListener('mousedown', e => {
     document.body.style.userSelect = '';
     if (!dragging) return;
     if (ghost) { ghost.remove(); ghost = null; }
-    chip.style.opacity = '';
+    sourceCell.style.opacity = '';
     if (hoverCell) {
       hoverCell.classList.remove('drop-over');
       const newDate = hoverCell.dataset.date;
-      const l = state.log.find(x => x.id === lid);
-      if (l && l.date !== newDate) { l.date = newDate; render(); queueSave(); }
+      const moved = state.log.find(x => x.id === lid);
+      if (moved && moved.date !== newDate) {
+        // If target date already has a meal, swap dates; otherwise just move
+        const displaced = state.log.find(x => x.date === newDate && x.id !== lid);
+        if (displaced) displaced.date = moved.date;
+        moved.date = newDate;
+        render(); queueSave();
+      }
     }
   }
 
