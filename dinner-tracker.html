@@ -1849,7 +1849,7 @@ function renderCalendar(){
         ondragstart="dragStart(event,'${l.id}')"
         ondragend="dragEnd(event)">${short}</span>`;
     });
-    html += `<div class="${cls}"
+    html += `<div class="${cls}" data-date="${iso}"
       ondragover="event.preventDefault();this.classList.add('drop-over')"
       ondragleave="this.classList.remove('drop-over')"
       ondrop="dropMealOnDate(event,'${iso}')">${inner}</div>`;
@@ -2201,10 +2201,31 @@ function dragStart(e, lid){
 }
 
 function dragEnd(e){
-  if (!__moveLid) return; // already committed by dropMealOnDate
-  const el = document.getElementById('mc-'+__moveLid);
+  const lid = __moveLid;
+  if (!lid) return; // already committed
+
+  // Primary commit: find what's under the cursor when the drag released
+  const under = document.elementFromPoint(e.clientX, e.clientY);
+  const cell  = under && under.closest('.strip-cell[id]');
+  if (cell) {
+    const dateStr = cell.id.replace('sc-', '');
+    __moveLid = null;
+    hideDragStrip();
+    moveMealToDate(lid, dateStr);
+    return;
+  }
+  // Also check calendar cells
+  const calCell = under && under.closest('.cal-cell[data-date]');
+  if (calCell) {
+    __moveLid = null;
+    hideDragStrip();
+    moveMealToDate(lid, calCell.dataset.date);
+    return;
+  }
+
+  // No valid target — clean up without moving
+  const el = document.getElementById('mc-'+lid);
   if (el) el.classList.remove('dragging');
-  // Keep strip open if in tap/move mode
   if (!el || !el.classList.contains('move-selected')){
     hideDragStrip(); __moveLid = null;
   }
@@ -2212,12 +2233,12 @@ function dragEnd(e){
 }
 
 function dropMealOnDate(e, dateStr){
+  // Belt-and-suspenders: also handle the drop event directly
   e.preventDefault();
   const lid = __moveLid; if (!lid) return;
-  document.querySelectorAll('.drop-over').forEach(x => x.classList.remove('drop-over'));
   __moveLid = null;
   hideDragStrip();
-  moveMealToDate(lid, dateStr); // calls render() which removes .dragging/.move-selected
+  moveMealToDate(lid, dateStr);
 }
 
 function enterMoveMode(lid){
