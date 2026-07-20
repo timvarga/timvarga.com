@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
 <style>
   :root{
     --green:#2d4a35; --green-light:#3d5f45; --cream:#faf7f0; --brown:#8a4a1a;
@@ -173,8 +174,17 @@
   .meal-card .row-actions button{cursor:pointer;}
   .meal-card .scrub-num{cursor:ew-resize;}
   .meal-date{cursor:pointer;user-select:none;-webkit-user-select:none;}
-  .meal-card.dragging{opacity:.2;box-shadow:none !important;cursor:grabbing;}
-  .meal-card.move-selected{outline:2px solid var(--saffron);outline-offset:3px;cursor:grab;}
+  .meal-card.dragging{opacity:.2;box-shadow:none !important;}
+  .meal-card.move-selected{outline:2px solid var(--saffron);outline-offset:3px;}
+  /* SortableJS states */
+  #sort-list .meal-card{cursor:grab;}
+  #sort-list .meal-card:active{cursor:grabbing;}
+  #sort-list .meal-card button,
+  #sort-list .meal-card summary,
+  #sort-list .meal-card .scrub-num{cursor:auto;}
+  .sortable-ghost{opacity:.25 !important;box-shadow:none !important;}
+  .sortable-chosen{box-shadow:var(--shadow-hover) !important;z-index:2;}
+  .sortable-drag{opacity:.9 !important;transform:rotate(1deg) scale(1.01);box-shadow:0 10px 36px rgba(44,35,20,.18) !important;}
   .cal-meal[draggable]{cursor:grab;}
   .cal-cell.drop-over{background:#e4f0e8 !important;outline:2px dashed var(--green);outline-offset:-3px;}
   #drag-strip{position:fixed;bottom:0;left:0;right:0;background:var(--green);z-index:9997;display:none;padding:6px 0 env(safe-area-inset-bottom,10px);box-shadow:0 -4px 24px rgba(0,0,0,.25);}
@@ -1311,12 +1321,14 @@ function renderUpcoming(){
   if (entries.length === 0){
     html += `<div class="empty">Nothing scheduled. Add a recipe to your plan from the Recipe Library.</div>`;
   } else {
+    html += `<div id="sort-list">`;
     entries.forEach(l => {
       const r = recipeById(l.recipeId);
       if (!r) return;
       const diff = daysFromToday(l.date);
       html += renderMealCard(l, r, diff);
     });
+    html += `</div>`;
   }
 
   if (cookedRecently.length){
@@ -2006,6 +2018,8 @@ function handleFile(evt){
 /* =========================================================
    MAIN RENDER
    ========================================================= */
+let __sortable = null;
+
 function render(){
   // Preserve open <details> across re-render
   const openIds = new Set([...document.querySelectorAll("details[open][id]")].map(d => d.id));
@@ -2022,8 +2036,40 @@ function render(){
   app.innerHTML = `
     ${body}
     <div class="footer-note">Dinner Tracker · synced live via Firebase.</div>`;
-  // Reopen any details that were open before re-render
   openIds.forEach(id => { const d = document.getElementById(id); if (d) d.open = true; });
+
+  // Wire up SortableJS on the upcoming list (list view only, not calendar)
+  if (__sortable) { __sortable.destroy(); __sortable = null; }
+  const sortEl = document.getElementById('sort-list');
+  if (sortEl && typeof Sortable !== 'undefined') {
+    // Build an ordered snapshot of the entries as currently displayed
+    const sortedEntries = state.log
+      .filter(l => l.status !== 'cooked' && l.status !== 'skipped')
+      .sort((a,b) => a.date.localeCompare(b.date));
+
+    __sortable = new Sortable(sortEl, {
+      animation: 180,
+      easing: 'cubic-bezier(.25,.8,.25,1)',
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      dragClass: 'sortable-drag',
+      // Don't start drag when touching buttons/summary/scrubbers
+      filter: 'button, input, select, textarea, summary, .scrub-num, .row-actions, .ing-list, .steps, .ing-add-form, .ing-add-bar',
+      preventOnFilter: true,
+      onEnd(evt) {
+        if (evt.oldIndex === evt.newIndex) return;
+        const moved  = sortedEntries[evt.oldIndex];
+        const target = sortedEntries[evt.newIndex];
+        if (!moved || !target) return;
+        // Swap dates so the card lands on the target's date
+        const tmp = moved.date;
+        moved.date  = target.date;
+        target.date = tmp;
+        render();
+        queueSave();
+      }
+    });
+  }
 }
 
 /* =========================================================
@@ -2141,12 +2187,8 @@ form.addEventListener("submit", async function(e){
   }
 });
 
-// Meal drag-to-reschedule — custom mouse drag (no HTML5 D&D API)
-// Reason: HTML5 drag events have unreliable coordinates in Chrome (clientX/Y stuck at 0,0 during drag).
-// Custom mousedown/mousemove/mouseup gives us full control and reliable elementFromPoint.
+// Meal move-mode (tap-to-reschedule for mobile / keyboard fallback)
 let __moveLid = null;
-let __dragGhost = null;
-let __dragOffX = 0, __dragOffY = 0;
 
 function moveMealToDate(lid, dateStr){
   const l = state.log.find(x => x.id === lid);
@@ -2182,79 +2224,6 @@ function buildDragStrip(lid){
   }, 20);
 }
 
-// Custom drag via mousedown + mousemove + mouseup.
-// The ghost div has pointer-events:none so elementFromPoint sees through it to the drop target.
-document.addEventListener('mousedown', e => {
-  if (e.button !== 0) return;
-  const card = e.target.closest('.meal-card[id^="mc-"]');
-  if (!card) return;
-  if (e.target.closest('button,input,select,textarea,summary,details,.scrub-num,.row-actions,.ing-list,.steps,.ing-add-form,.ing-add-bar')) return;
-
-  const lid = card.id.replace('mc-', '');
-  const startX = e.clientX, startY = e.clientY;
-  let dragging = false;
-  let hoverDate = null;
-
-  function onMove(e) {
-    if (!dragging) {
-      const dx = e.clientX - startX, dy = e.clientY - startY;
-      if (dx*dx + dy*dy < 36) return; // 6px threshold before drag starts
-      dragging = true;
-      __moveLid = lid;
-      // Clone card as ghost
-      const rect = card.getBoundingClientRect();
-      __dragOffX = startX - rect.left;
-      __dragOffY = startY - rect.top;
-      __dragGhost = card.cloneNode(true);
-      __dragGhost.removeAttribute('id');
-      __dragGhost.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;margin:0;opacity:.82;z-index:9999;pointer-events:none;transform:rotate(1.5deg) scale(1.02);box-shadow:0 8px 32px rgba(0,0,0,.22);transition:none;border-radius:12px;`;
-      document.body.appendChild(__dragGhost);
-      card.classList.add('dragging');
-      buildDragStrip(lid);
-      document.getElementById('drag-strip').style.display = '';
-      document.body.style.userSelect = 'none';
-    }
-
-    // Move ghost
-    __dragGhost.style.left = (e.clientX - __dragOffX) + 'px';
-    __dragGhost.style.top  = (e.clientY - __dragOffY) + 'px';
-
-    // Find drop target — ghost has pointer-events:none so elementFromPoint sees through it
-    const under = document.elementFromPoint(e.clientX, e.clientY);
-    const stripCell = under && under.closest('.strip-cell[id^="sc-"]');
-    const calCell   = !stripCell && under && under.closest('.cal-cell[data-date]');
-
-    document.querySelectorAll('.drop-over').forEach(x => x.classList.remove('drop-over'));
-    if (stripCell) {
-      hoverDate = stripCell.id.replace('sc-', '');
-      stripCell.classList.add('drop-over');
-    } else if (calCell) {
-      hoverDate = calCell.dataset.date;
-      calCell.classList.add('drop-over');
-    } else {
-      hoverDate = null;
-    }
-  }
-
-  function onUp() {
-    document.removeEventListener('mousemove', onMove);
-    document.removeEventListener('mouseup', onUp);
-    document.body.style.userSelect = '';
-    if (!dragging) return;
-    const date = hoverDate;
-    const dragLid = __moveLid;
-    __moveLid = null;
-    dragging = false;
-    if (__dragGhost) { __dragGhost.remove(); __dragGhost = null; }
-    document.querySelectorAll('.drop-over').forEach(x => x.classList.remove('drop-over'));
-    card.classList.remove('dragging', 'move-selected');
-    hideDragStrip();
-    if (date) moveMealToDate(dragLid, date);
-  }
-
-  document.addEventListener('mousemove', onMove);
-  document.addEventListener('mouseup', onUp);
-});
 
 function enterMoveMode(lid){
   if (__moveLid === lid){ exitMoveMode(); return; } // toggle off
