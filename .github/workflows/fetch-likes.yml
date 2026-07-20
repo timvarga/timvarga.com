@@ -5,6 +5,12 @@ on:
     - cron: '0 */6 * * *'   # every 6 hours
   workflow_dispatch:          # also runnable manually from the Actions tab
 
+# Only one run at a time — if a new run starts while one is in progress,
+# cancel the older one (it's just a data refresh, latest wins).
+concurrency:
+  group: fetch-likes
+  cancel-in-progress: true
+
 jobs:
   fetch-likes:
     runs-on: ubuntu-latest
@@ -86,4 +92,7 @@ jobs:
           git add assets/data/likes.json
           # Only commit if the file actually changed
           git diff --staged --quiet || git commit -m "chore: refresh Bluesky likes [skip ci]"
+          # Rebase onto any commits that landed while this run was in progress,
+          # then push — prevents the "remote rejected" conflict on concurrent runs.
+          git pull --rebase origin main
           git push
