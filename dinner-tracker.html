@@ -1338,10 +1338,7 @@ function renderMealCard(l, r, diff){
   if (l.status === "cooked") badge = '<span class="badge cooked">Cooked</span>';
   else if (diff !== null) badge = urgencyBadge(diff);
 
-  return `<div class="card meal-card" id="mc-${l.id}" data-cuisine="${r.cuisine}"
-    draggable="true"
-    ondragstart="dragStart(event,'${l.id}')"
-    ondragend="dragEnd(event)">
+  return `<div class="card meal-card" id="mc-${l.id}" data-cuisine="${r.cuisine}">
     <div class="meal-row">
       <div class="meal-date" onclick="enterMoveMode('${l.id}')" title="Tap to reschedule">
         <div class="d">${dayName}</div><div class="n">${dayNum}</div>
@@ -2144,9 +2141,12 @@ form.addEventListener("submit", async function(e){
   }
 });
 
-// Meal drag-to-reschedule
+// Meal drag-to-reschedule — custom mouse drag (no HTML5 D&D API)
+// Reason: HTML5 drag events have unreliable coordinates in Chrome (clientX/Y stuck at 0,0 during drag).
+// Custom mousedown/mousemove/mouseup gives us full control and reliable elementFromPoint.
 let __moveLid = null;
-let __hoverDate = null;  // date cell currently under the drag cursor
+let __dragGhost = null;
+let __dragOffX = 0, __dragOffY = 0;
 
 function moveMealToDate(lid, dateStr){
   const l = state.log.find(x => x.id === lid);
@@ -2182,76 +2182,79 @@ function buildDragStrip(lid){
   }, 20);
 }
 
-// Track which date cell the cursor is over using dragover on the TARGET element.
-// dragover fires reliably on the element under the cursor (unlike the 'drag' event which has 0,0 coords in Chrome).
-document.addEventListener('dragover', e => {
-  if (!__moveLid) return;
-  const stripCell = e.target.closest('.strip-cell[id^="sc-"]');
-  const calCell   = !stripCell && e.target.closest('.cal-cell[data-date]');
-  if (stripCell) {
-    e.preventDefault(); // enable drop cursor
-    const date = stripCell.id.replace('sc-', '');
-    if (date !== __hoverDate) {
-      document.querySelectorAll('.drop-over').forEach(x => x.classList.remove('drop-over'));
+// Custom drag via mousedown + mousemove + mouseup.
+// The ghost div has pointer-events:none so elementFromPoint sees through it to the drop target.
+document.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  const card = e.target.closest('.meal-card[id^="mc-"]');
+  if (!card) return;
+  if (e.target.closest('button,input,select,textarea,summary,details,.scrub-num,.row-actions,.ing-list,.steps,.ing-add-form,.ing-add-bar')) return;
+
+  const lid = card.id.replace('mc-', '');
+  const startX = e.clientX, startY = e.clientY;
+  let dragging = false;
+  let hoverDate = null;
+
+  function onMove(e) {
+    if (!dragging) {
+      const dx = e.clientX - startX, dy = e.clientY - startY;
+      if (dx*dx + dy*dy < 36) return; // 6px threshold before drag starts
+      dragging = true;
+      __moveLid = lid;
+      // Clone card as ghost
+      const rect = card.getBoundingClientRect();
+      __dragOffX = startX - rect.left;
+      __dragOffY = startY - rect.top;
+      __dragGhost = card.cloneNode(true);
+      __dragGhost.removeAttribute('id');
+      __dragGhost.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;margin:0;opacity:.82;z-index:9999;pointer-events:none;transform:rotate(1.5deg) scale(1.02);box-shadow:0 8px 32px rgba(0,0,0,.22);transition:none;border-radius:12px;`;
+      document.body.appendChild(__dragGhost);
+      card.classList.add('dragging');
+      buildDragStrip(lid);
+      document.getElementById('drag-strip').style.display = '';
+      document.body.style.userSelect = 'none';
+    }
+
+    // Move ghost
+    __dragGhost.style.left = (e.clientX - __dragOffX) + 'px';
+    __dragGhost.style.top  = (e.clientY - __dragOffY) + 'px';
+
+    // Find drop target — ghost has pointer-events:none so elementFromPoint sees through it
+    const under = document.elementFromPoint(e.clientX, e.clientY);
+    const stripCell = under && under.closest('.strip-cell[id^="sc-"]');
+    const calCell   = !stripCell && under && under.closest('.cal-cell[data-date]');
+
+    document.querySelectorAll('.drop-over').forEach(x => x.classList.remove('drop-over'));
+    if (stripCell) {
+      hoverDate = stripCell.id.replace('sc-', '');
       stripCell.classList.add('drop-over');
-      __hoverDate = date;
-    }
-  } else if (calCell) {
-    e.preventDefault();
-    const date = calCell.dataset.date;
-    if (date !== __hoverDate) {
-      document.querySelectorAll('.drop-over').forEach(x => x.classList.remove('drop-over'));
+    } else if (calCell) {
+      hoverDate = calCell.dataset.date;
       calCell.classList.add('drop-over');
-      __hoverDate = date;
-    }
-  } else {
-    // Cursor is over empty space — clear hover state
-    if (__hoverDate !== null) {
-      __hoverDate = null;
-      document.querySelectorAll('.drop-over').forEach(x => x.classList.remove('drop-over'));
+    } else {
+      hoverDate = null;
     }
   }
+
+  function onUp() {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    document.body.style.userSelect = '';
+    if (!dragging) return;
+    const date = hoverDate;
+    const dragLid = __moveLid;
+    __moveLid = null;
+    dragging = false;
+    if (__dragGhost) { __dragGhost.remove(); __dragGhost = null; }
+    document.querySelectorAll('.drop-over').forEach(x => x.classList.remove('drop-over'));
+    card.classList.remove('dragging', 'move-selected');
+    hideDragStrip();
+    if (date) moveMealToDate(dragLid, date);
+  }
+
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
 });
-
-function dragStart(e, lid){
-  // Don't steal drag from interactive elements
-  if (e.target.closest('button,input,select,textarea,summary,details,.scrub-num,.row-actions,.ing-list,.steps,.ing-add-form,.ing-add-bar')){
-    e.preventDefault(); return;
-  }
-  __moveLid = lid;
-  __hoverDate = null;
-  e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/plain', lid);
-  buildDragStrip(lid);
-  document.getElementById('drag-strip').style.display = '';
-  setTimeout(() => {
-    const el = document.getElementById('mc-'+lid);
-    if (el) el.classList.add('dragging');
-  }, 0);
-}
-
-function dragEnd(e){
-  const lid = __moveLid;
-  const date = __hoverDate;
-  __moveLid = null;
-  __hoverDate = null;
-  document.querySelectorAll('.drop-over').forEach(x => x.classList.remove('drop-over'));
-  if (!lid) return;
-  const el = document.getElementById('mc-'+lid);
-  if (el) el.classList.remove('dragging', 'move-selected');
-  hideDragStrip();
-  if (date) moveMealToDate(lid, date);
-  // else: drag cancelled — clean exit, nothing moved
-}
-
-function dropMealOnDate(e, dateStr){
-  e.preventDefault();
-  const lid = __moveLid; if (!lid) return;
-  __moveLid = null;
-  __hoverDate = null;
-  hideDragStrip();
-  moveMealToDate(lid, dateStr);
-}
 
 function enterMoveMode(lid){
   if (__moveLid === lid){ exitMoveMode(); return; } // toggle off
