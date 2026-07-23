@@ -2050,7 +2050,7 @@ function render(){
       dragClass: 'sortable-drag',
       // Don't start drag when touching buttons/summary/scrubbers
       filter: 'button, input, select, textarea, summary, .scrub-num, .row-actions, .ing-list, .steps, .ing-add-form, .ing-add-bar',
-      preventOnFilter: true,
+      preventOnFilter: false,
       onEnd(evt) {
         if (evt.oldIndex === evt.newIndex) return;
         const moved  = sortedEntries[evt.oldIndex];
