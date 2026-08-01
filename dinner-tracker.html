@@ -176,12 +176,9 @@
   .meal-date{cursor:pointer;user-select:none;-webkit-user-select:none;}
   .meal-card.dragging{opacity:.2;box-shadow:none !important;}
   .meal-card.move-selected{outline:2px solid var(--saffron);outline-offset:3px;}
-  /* SortableJS states */
-  #sort-list .meal-card{cursor:grab;}
-  #sort-list .meal-card:active{cursor:grabbing;}
-  #sort-list .meal-card button,
-  #sort-list .meal-card summary,
-  #sort-list .meal-card .scrub-num{cursor:auto;}
+  /* SortableJS states — only the date column is the drag handle */
+  #sort-list .meal-card .meal-date{cursor:grab;}
+  #sort-list .meal-card .meal-date:active{cursor:grabbing;}
   .sortable-ghost{opacity:.25 !important;box-shadow:none !important;}
   .sortable-chosen{box-shadow:var(--shadow-hover) !important;z-index:2;}
   .sortable-drag{opacity:.9 !important;transform:rotate(1deg) scale(1.01);box-shadow:0 10px 36px rgba(44,35,20,.18) !important;}
@@ -1279,6 +1276,56 @@ function queueSave(){
   }, 500);
 }
 
+// Automatically schedule meals so the next 14 days always stay populated.
+// Picks from the recipe library, preferring recipes not already scheduled
+// and not recently cooked. Called at the top of render() — mutates state
+// in place so the same render pass shows the filled-in cards.
+function autoFillUpcoming(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todayStr = today.toISOString().slice(0,10);
+  const HORIZON = 14;
+
+  // Dates already covered by a planned meal
+  const covered = new Set(
+    state.log.filter(l => l.status === 'planned' && l.date >= todayStr).map(l => l.date)
+  );
+
+  // Days in the window that need a meal
+  const gaps = [];
+  for (let i = 0; i < HORIZON; i++){
+    const d = new Date(today); d.setDate(d.getDate() + i);
+    const ds = d.toISOString().slice(0,10);
+    if (!covered.has(ds)) gaps.push(ds);
+  }
+  if (!gaps.length) return;
+
+  // Recipe ids already on the schedule (avoid repeats in upcoming window)
+  const scheduledIds = new Set(
+    state.log.filter(l => l.status === 'planned' && l.date >= todayStr).map(l => l.recipeId)
+  );
+  // Last 7 cooked recipe ids (deprioritise repeating too soon)
+  const recentIds = new Set(
+    state.log.filter(l => l.status === 'cooked')
+      .sort((a,b) => b.date.localeCompare(a.date)).slice(0,7).map(l => l.recipeId)
+  );
+
+  // Rank: unscheduled + not recent first
+  const ranked = [...state.recipes].sort((a,b) => {
+    const score = r => (scheduledIds.has(r.id) ? 2 : 0) + (recentIds.has(r.id) ? 1 : 0);
+    return score(a) - score(b);
+  });
+  if (!ranked.length) return;
+
+  gaps.forEach((date, i) => {
+    const recipe = ranked[i % ranked.length];
+    const newId = 'log_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+    state.log.push({ id: newId, recipeId: recipe.id, date, headcount: 2, status: 'planned', note: '' });
+    scheduledIds.add(recipe.id); // prevent the same recipe filling two gaps
+  });
+
+  queueSave(); // persist the new entries
+}
+
 function recipeById(id){ return state.recipes.find(r => r.id === id); }
 function fmtDate(iso){
   const d = new Date(iso + "T00:00:00");
@@ -2016,6 +2063,7 @@ function handleFile(evt){
 let __sortable = null;
 
 function render(){
+  autoFillUpcoming(); // keep next 14 days populated before drawing
   // Preserve open <details> across re-render
   const openIds = new Set([...document.querySelectorAll("details[open][id]")].map(d => d.id));
   renderNav();
@@ -2045,12 +2093,10 @@ function render(){
     __sortable = new Sortable(sortEl, {
       animation: 180,
       easing: 'cubic-bezier(.25,.8,.25,1)',
+      handle: '.meal-date',   // only the date column initiates drag
       ghostClass: 'sortable-ghost',
       chosenClass: 'sortable-chosen',
       dragClass: 'sortable-drag',
-      // Don't start drag when touching buttons/summary/scrubbers
-      filter: 'button, input, select, textarea, summary, .scrub-num, .row-actions, .ing-list, .steps, .ing-add-form, .ing-add-bar',
-      preventOnFilter: false,
       onEnd(evt) {
         if (evt.oldIndex === evt.newIndex) return;
         const moved  = sortedEntries[evt.oldIndex];
