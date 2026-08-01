@@ -176,9 +176,10 @@
   .meal-date{cursor:pointer;user-select:none;-webkit-user-select:none;}
   .meal-card.dragging{opacity:.2;box-shadow:none !important;}
   .meal-card.move-selected{outline:2px solid var(--saffron);outline-offset:3px;}
-  /* SortableJS states — only the date column is the drag handle */
-  #sort-list .meal-card .meal-date{cursor:grab;}
-  #sort-list .meal-card .meal-date:active{cursor:grabbing;}
+  /* Drag grip — hidden by default, shown only inside the sortable list */
+  .drag-grip{display:none;}
+  #sort-list .drag-grip{display:block;font-size:15px;color:var(--muted);opacity:.35;margin-top:5px;cursor:grab;line-height:1;user-select:none;-webkit-user-select:none;}
+  #sort-list .drag-grip:active{cursor:grabbing;opacity:.6;}
   .sortable-ghost{opacity:.25 !important;box-shadow:none !important;}
   .sortable-chosen{box-shadow:var(--shadow-hover) !important;z-index:2;}
   .sortable-drag{opacity:.9 !important;transform:rotate(1deg) scale(1.01);box-shadow:0 10px 36px rgba(44,35,20,.18) !important;}
@@ -1401,6 +1402,7 @@ function renderMealCard(l, r, diff){
     <div class="meal-row">
       <div class="meal-date" onclick="enterMoveMode('${l.id}')" title="Tap to reschedule">
         <div class="d">${dayName}</div><div class="n">${dayNum}</div>
+        <div class="drag-grip" title="Drag to reorder">⠿</div>
       </div>
       <div class="meal-body">
         <div class="meal-title">${r.title}${badge}</div>
@@ -2093,7 +2095,7 @@ function render(){
     __sortable = new Sortable(sortEl, {
       animation: 180,
       easing: 'cubic-bezier(.25,.8,.25,1)',
-      handle: '.meal-date',   // only the date column initiates drag
+      handle: '.drag-grip',   // only the grip icon initiates drag
       ghostClass: 'sortable-ghost',
       chosenClass: 'sortable-chosen',
       dragClass: 'sortable-drag',
