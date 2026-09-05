@@ -1941,16 +1941,33 @@ function renderGroceryList(){
   // Unique sorted dates
   const dates = [...new Set(upcoming.map(l => l.date))].sort();
 
-  // Sort rows by type then name
-  const typeOrder = ["protein","vegetable","fruit","legume","grain","fermented","condiment","other"];
-  const typeDotColor = {
-    protein:"#b3441f", vegetable:"#3b7a4a", fruit:"#c47a2b", legume:"#7a5c17",
-    grain:"#8a7340", fermented:"#6b4a7a", condiment:"#9a9a8a", other:"#9a9a8a"
+  // Group by where you'd actually find each ingredient in the store, walking
+  // the usual perimeter-then-aisles path — frozen items are pulled into their
+  // own stop regardless of type, since that's genuinely a separate aisle.
+  const SECTION_ORDER = ["produce","meat","frozen","refrigerated","grains","canned","condiments","other"];
+  const SECTION_LABELS = {
+    produce:"Produce", meat:"Meat & Seafood", frozen:"Frozen",
+    refrigerated:"Refrigerated & Fermented", grains:"Grains, Bread & Pasta",
+    canned:"Canned & Dry Goods", condiments:"Condiments, Spices & Sauces", other:"Other"
   };
+  const SECTION_COLORS = {
+    produce:"#3b7a4a", meat:"#b3441f", frozen:"#4a7a8a", refrigerated:"#6b4a7a",
+    grains:"#8a7340", canned:"#7a5c17", condiments:"#9a9a8a", other:"#9a9a8a"
+  };
+  const TYPE_TO_SECTION = {
+    vegetable:"produce", fruit:"produce", protein:"meat", fermented:"refrigerated",
+    grain:"grains", legume:"canned", condiment:"condiments", other:"other"
+  };
+  function sectionFor(row){ return row.frozen ? "frozen" : (TYPE_TO_SECTION[row.type] || "other"); }
+  function earliestDate(row){ return Object.keys(row.dates).sort()[0]; }
+
+  // Sort rows by store section (in walking order), then by soonest date needed
   const rows = Object.values(ingMap).sort((a,b) => {
-    const ta = typeOrder.indexOf(a.type) < 0 ? 99 : typeOrder.indexOf(a.type);
-    const tb = typeOrder.indexOf(b.type) < 0 ? 99 : typeOrder.indexOf(b.type);
-    return ta !== tb ? ta - tb : a.name.localeCompare(b.name);
+    const sa = SECTION_ORDER.indexOf(sectionFor(a));
+    const sb = SECTION_ORDER.indexOf(sectionFor(b));
+    if (sa !== sb) return sa - sb;
+    const da = earliestDate(a), db = earliestDate(b);
+    return da !== db ? da.localeCompare(db) : a.name.localeCompare(b.name);
   });
 
   // Header toggles
@@ -1967,25 +1984,25 @@ function renderGroceryList(){
 
   // Table body
   let tableBody = "";
-  let currentType = null;
+  let currentSection = null;
   rows.forEach(row => {
-    if (row.type !== currentType){
-      currentType = row.type;
-      tableBody += `<tr class="gl-type-sep"><td colspan="${dates.length+1}">${TYPE_LABELS[row.type]||row.type}</td></tr>`;
+    const section = sectionFor(row);
+    if (section !== currentSection){
+      currentSection = section;
+      tableBody += `<tr class="gl-type-sep"><td colspan="${dates.length+1}">${SECTION_LABELS[section]||section}</td></tr>`;
     }
     const key = row.name.toLowerCase().trim();
     const checked = groceryChecked.has(key);
-    const frozenTag = row.frozen ? `<span class="frozen-tag">❄</span>` : "";
     const nameStyle = checked ? "opacity:.35;text-decoration:line-through;" : "";
     const dotCells = dates.map(d => {
       if (!row.dates[d]) return `<td></td>`;
       const tip = row.dates[d].join(" · ").replace(/"/g,"&quot;");
-      const color = typeDotColor[row.type] || "#9a9a8a";
+      const color = SECTION_COLORS[section] || "#9a9a8a";
       return `<td title="${tip}"><span class="gl-dot" style="background:${color};opacity:${checked?.3:1}"></span></td>`;
     }).join("");
     const safeKey = key.replace(/\\/g,"\\\\").replace(/'/g,"\\'");
     tableBody += `<tr class="gl-row" onclick="toggleGrocery('${safeKey}')">
-      <td class="gl-ing-cell" style="${nameStyle}">${row.name}${frozenTag}</td>
+      <td class="gl-ing-cell" style="${nameStyle}">${row.name}</td>
       ${dotCells}
     </tr>`;
   });
