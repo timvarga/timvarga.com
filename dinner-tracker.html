@@ -36,18 +36,6 @@
   main{max-width:960px;margin:0 auto;padding:20px 16px 80px;}
   .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:14px;box-shadow:var(--shadow);transition:box-shadow .2s ease;position:relative;}
   .card:hover{box-shadow:var(--shadow-hover);z-index:1;}
-  /* Cuisine accent — colored left border on meal cards */
-  .meal-card{border-left:4px solid var(--border);padding-left:16px;}
-  .meal-card[data-cuisine="Mediterranean"]{border-left-color:#c4882a;}
-  .meal-card[data-cuisine="Middle Eastern"]{border-left-color:#b87038;}
-  .meal-card[data-cuisine="Asian"],.meal-card[data-cuisine="Pan-Asian"]{border-left-color:#4a7a8a;}
-  .meal-card[data-cuisine="Japanese"]{border-left-color:#5a6a9a;}
-  .meal-card[data-cuisine="Korean"]{border-left-color:#7a4a8a;}
-  .meal-card[data-cuisine="Thai"],.meal-card[data-cuisine="Southeast Asian"]{border-left-color:#6a8a3a;}
-  .meal-card[data-cuisine="Indian"]{border-left-color:#c47028;}
-  .meal-card[data-cuisine="Mexican"],.meal-card[data-cuisine="Tex-Mex"]{border-left-color:#a83828;}
-  .meal-card[data-cuisine="American"]{border-left-color:#4a6a5a;}
-  .meal-card[data-cuisine="Global"],.meal-card[data-cuisine="Fusion"]{border-left-color:#6a5a8a;}
   .panel-title{font-size:16px;font-weight:600;color:var(--green);margin:4px 0 14px;font-family:var(--serif);}
   .meal-row{display:flex;gap:14px;align-items:flex-start;}
   .meal-date{min-width:48px;text-align:center;padding-top:2px;}
@@ -1398,7 +1386,7 @@ function renderMealCard(l, r, diff){
   if (l.status === "cooked") badge = '<span class="badge cooked">Cooked</span>';
   else if (diff !== null) badge = urgencyBadge(diff);
 
-  return `<div class="card meal-card" id="mc-${l.id}" data-cuisine="${r.cuisine}">
+  return `<div class="card meal-card" id="mc-${l.id}">
     <div class="meal-row">
       <div class="meal-date" onclick="enterMoveMode('${l.id}')" title="Tap to reschedule">
         <div class="d">${dayName}</div><div class="n">${dayNum}</div>
